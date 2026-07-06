@@ -49,6 +49,16 @@
         <div class="bar"><span id="diskBar" style="width:0%"></span></div>
         <div class="muted" id="diskDetail"></div>
       </div>
+      <div class="card">
+        <div class="muted">Schreibschutz</div>
+        <div class="kpi"><span id="lockIcon">–</span> <span id="lockState">–</span></div>
+        <div class="muted" id="lockDetail"></div>
+        <div class="row" style="margin-top:10px; gap:8px;">
+          <button id="btnLock">🔒 Schützen</button>
+          <button id="btnUnlock" class="secondary">🔓 Freigeben</button>
+        </div>
+        <p id="lockMsg" class="muted" style="margin-top:6px;"></p>
+      </div>
     </div>
 
     <div class="card">
@@ -99,7 +109,32 @@ async function loadStatus() {
   document.getElementById("clientsBody").innerHTML = s.clients.length
     ? s.clients.map(c => `<tr><td>${c.hostname || "–"}</td><td>${c.ip || "–"}</td><td>${c.mac}</td></tr>`).join("")
     : `<tr><td colspan="3" class="muted">Keine Geräte verbunden</td></tr>`;
+
+  renderLock(s.lock);
 }
+
+function renderLock(l) {
+  if (!l) return;
+  const icon = document.getElementById("lockIcon");
+  const state = document.getElementById("lockState");
+  const detail = document.getElementById("lockDetail");
+  if (l.locked === true) { icon.textContent="🔒"; state.textContent="Gesperrt"; state.style.color="#2ea043"; }
+  else if (l.locked === false) { icon.textContent="🔓"; state.textContent="Offen"; state.style.color="#f0883e"; }
+  else { icon.textContent="ℹ️"; state.textContent="–"; state.style.color="#8b949e"; }
+  detail.textContent = `${l.detail || ""} · FS: ${l.fs || "?"}`;
+}
+
+async function doLock(action) {
+  const msg = document.getElementById("lockMsg");
+  msg.textContent = action === "lock" ? "Sperre Videos…" : "Gebe Videos frei…";
+  const r = await fetch(`/api/admin/${action}`, {method:"POST", credentials:"same-origin"});
+  const j = await r.json().catch(()=>({}));
+  msg.textContent = r.ok ? "Fertig." : ("Fehler: " + (j.error || j.stderr || r.status));
+  if (j.lock) renderLock(j.lock);
+  setTimeout(loadStatus, 500);
+}
+document.getElementById("btnLock").addEventListener("click", () => doLock("lock"));
+document.getElementById("btnUnlock").addEventListener("click", () => doLock("unlock"));
 
 function showLogin(){ document.getElementById("login").hidden=false; document.getElementById("dashboard").hidden=true; }
 function showDash(){  document.getElementById("login").hidden=true;  document.getElementById("dashboard").hidden=false; }
