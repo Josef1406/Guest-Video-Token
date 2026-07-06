@@ -13,7 +13,14 @@ zuladen oder per WhatsApp zu teilen. **Kein Internet nötig.**
 | **USB** | Pi als USB-Massenspeicher am Windows-PC (exFAT `VIDEOS`) | `switch-mode usb` |
 | **Wartung** | SSH über AP (`ssh pi@192.168.4.1`) | – |
 
-Hardware-Umschaltung optional per GPIO 17 Taster oder Schiebeschalter GPIO 5 (AP) / GPIO 6 (USB) gegen GND.
+Der USB-Modus kennt zwei Schreibschutz-Zustände:
+
+| Zustand | Bedeutung | Wer darf schreiben |
+|---|---|---|
+| **Read-only** (`ro=1`) | Windows sieht das Laufwerk als schreibgeschützt | niemand (Kunden-Modus) |
+| **Beschreibbar** (`ro=0`) | Windows sieht das Laufwerk wie eine normale USB-Festplatte | Admin zum Aufspielen |
+
+Hardware-Umschaltung optional per GPIO 17 Taster oder Schiebeschalter GPIO 5 (AP) / GPIO 6 (USB) gegen GND. Schreibschutz per GPIO 26 gegen GND (Admin) bzw. offen/HIGH (Kunde).
 
 ## SD-Karte partitionieren
 
