@@ -182,6 +182,20 @@ class Handler(BaseHTTPRequestHandler):
             c = SimpleCookie(); c.load(raw) if raw else None
             if "vt_admin" in c: SESSIONS.pop(c["vt_admin"].value, None)
             return self._json(200, {"ok": True}, cookie="vt_admin=; Path=/; Max-Age=0")
+        if self.path in ("/api/admin/lock", "/api/admin/unlock"):
+            if not is_authed(self.headers):
+                return self._json(401, {"error": "unauthorized"})
+            script = "/usr/local/sbin/pi-lock-videos" if self.path.endswith("/lock") \
+                     else "/usr/local/sbin/pi-unlock-videos"
+            try:
+                r = subprocess.run([script], capture_output=True, text=True, timeout=30)
+                ok = r.returncode == 0
+                return self._json(200 if ok else 500, {
+                    "ok": ok, "stdout": r.stdout[-2000:], "stderr": r.stderr[-2000:],
+                    "lock": get_lock_state(),
+                })
+            except Exception as e:
+                return self._json(500, {"ok": False, "error": str(e)})
         self._json(404, {"error": "not found"})
 
     def do_GET(self):
