@@ -130,13 +130,43 @@ Am Token selbst muss nichts angepasst werden.
 
 ## Schreibschutz
 
+Da Windows-Gäste die exFAT-Datenpartition per USB-Gadget direkt mounten, können klassische Unix-Rechte (`chmod`, `chattr`) nicht verhindern, dass jemand im Explorer Dateien löscht oder umbenennt. Die einzige Strategie, die Windows akzeptiert, ist der **USB-Gadget-Read-Only-Flag `ro=1`**.
+
+### Empfohlene Strategie: Hardware-Schalter (GPIO 26)
+
+| GPIO 26 | Zustand | USB-Gadget | Bedeutung |
+|---|---|---|---|
+| **gegen GND / LOW** | Admin | `ro=0` beschreibbar | Admin kopiert/ändert/löscht Videos |
+| **offen / HIGH** | Kunde | `ro=1` read-only | Gäste können nur kopieren, nichts verändern |
+
+Vorgang:
+
+1. Token an Admin-PC anschließen, GPIO 26 auf GND → USB-Gadget beschreibbar.
+2. Videos mit dem Explorer/WinSCP kopieren oder bearbeiten.
+3. Token wieder abziehen, GPIO 26 offen/HIGH.
+4. Token an Kunden übergeben. Falls der Kunde in den USB-Modus schaltet, meldet Windows das Laufwerk als schreibgeschützt.
+
+### Technische Details
+
+- `switch-mode usb` liest den Wert aus `/var/lib/video-token/gadget_ro` (default `1`).
+- Der GPIO-Daemon `gpio-switch.py` schreibt diesen Wert bei GPIO 26 und ruft `switch-mode reapply` auf, falls der USB-Modus bereits aktiv ist.
+- Der aktive `ro`-Wert ist im Kernel-Modul-Parameter `/sys/module/g_mass_storage/parameters/ro` ablesbar.
+- Admin-Status-Seite (`http://192.168.4.1/admin.html`) zeigt Soll- und Ist-Wert des Schreibschutzes an.
+
+### Sekundärer Schutz (Dateisystem)
+
 - `sudo pi-lock-videos` setzt `chmod 0444` + `chattr +i` (funktioniert auf ext4).
 - `sudo pi-unlock-videos` macht es rückgängig.
-- Auf **exFAT** wirken `chattr`/`chmod` nicht. Zwei Strategien:
-  - **Einfach**: In `pi/switch-mode.sh` `GADGET_RO=1` setzen. Windows sieht das Laufwerk dann read-only – kein Löschen, keine Umbenennung möglich.
-  - **Robust**: Videos nach dem Kopieren zusätzlich in `/srv/videos` (ext4) belassen (statt exFAT direkt zu servieren) und dort locken.
+- Auf **exFAT** wirken `chattr`/`chmod` nicht – daher ist der GPIO 26/USB-Gadget-Read-Only-Flag die wirksame Schutzschicht für Windows.
 
-Der Default in `nginx.conf` liest aus `/srv/videos/` – wenn du die exFAT-Partition dort hin mountest, ist beides erreichbar.
+### Admin-Status
+
+Die Admin-Seite zeigt:
+
+- Betriebsmodus (AP / USB)
+- USB-Schreibschutz: Soll-Wert (Datei) vs. Ist-Wert (Kernel)
+- Dateisystem-Schreibschutz (`chmod`/`chattr`) als zusätzliche Info
+- Event-Übersicht und Speicherplatz
 
 ## Skripte
 
