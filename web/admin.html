@@ -50,7 +50,7 @@
         <div class="muted" id="diskDetail"></div>
       </div>
       <div class="card">
-        <div class="muted">Schreibschutz</div>
+        <div class="muted">Schreibschutz (Dateisystem)</div>
         <div class="kpi"><span id="lockIcon">–</span> <span id="lockState">–</span></div>
         <div class="muted" id="lockDetail"></div>
         <div class="row" style="margin-top:10px; gap:8px;">
@@ -59,7 +59,13 @@
         </div>
         <p id="lockMsg" class="muted" style="margin-top:6px;"></p>
       </div>
+      <div class="card">
+        <div class="muted">USB-Schreibschutz (GPIO 26)</div>
+        <div class="kpi"><span id="roIcon">–</span> <span id="roState">–</span></div>
+        <div class="muted" id="roDetail">Steuerung nur per Hardware-Schalter</div>
+      </div>
     </div>
+
 
     <div class="card">
       <h3>Events</h3>
@@ -111,6 +117,26 @@ async function loadStatus() {
     : `<tr><td colspan="3" class="muted">Keine Geräte verbunden</td></tr>`;
 
   renderLock(s.lock);
+  renderGadgetRo(s.gadget_ro, s.mode);
+}
+
+function renderGadgetRo(g, mode) {
+  const icon = document.getElementById("roIcon");
+  const state = document.getElementById("roState");
+  const detail = document.getElementById("roDetail");
+  if (!g) { icon.textContent="ℹ️"; state.textContent="–"; detail.textContent=""; return; }
+  const desired = g.desired;
+  const active  = g.active;
+  if (desired === 1) { icon.textContent="🔒"; state.textContent="Read-only"; state.style.color="#2ea043"; }
+  else if (desired === 0) { icon.textContent="🔓"; state.textContent="Beschreibbar"; state.style.color="#f0883e"; }
+  else { icon.textContent="ℹ️"; state.textContent="unbekannt"; state.style.color="#8b949e"; }
+  let d = `Schalter (Soll): ${desired===1?"HIGH / ro=1":desired===0?"LOW / ro=0":"?"}`;
+  if (mode === "usb") d += ` · Gadget aktiv: ${active===1?"ro=1":active===0?"ro=0":"?"}`;
+  else d += " · Gadget nicht geladen (AP-Modus)";
+  if (desired !== null && active !== null && desired !== active) {
+    d += " ⚠️ Soll ≠ Ist";
+  }
+  detail.textContent = d;
 }
 
 function renderLock(l) {
