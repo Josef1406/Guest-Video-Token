@@ -49,6 +49,16 @@
         <div class="bar"><span id="diskBar" style="width:0%"></span></div>
         <div class="muted" id="diskDetail"></div>
       </div>
+      <div class="card">
+        <div class="muted">Schreibschutz</div>
+        <div class="kpi"><span id="lockIcon">–</span> <span id="lockState">–</span></div>
+        <div class="muted" id="lockDetail"></div>
+        <div class="row" style="margin-top:10px; gap:8px;">
+          <button id="btnLock">🔒 Schützen</button>
+          <button id="btnUnlock" class="secondary">🔓 Freigeben</button>
+        </div>
+        <p id="lockMsg" class="muted" style="margin-top:6px;"></p>
+      </div>
     </div>
 
     <div class="card">
