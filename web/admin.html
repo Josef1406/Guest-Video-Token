@@ -50,7 +50,7 @@
         <div class="muted" id="diskDetail"></div>
       </div>
       <div class="card">
-        <div class="muted">Schreibschutz</div>
+        <div class="muted">Schreibschutz (Dateisystem)</div>
         <div class="kpi"><span id="lockIcon">–</span> <span id="lockState">–</span></div>
         <div class="muted" id="lockDetail"></div>
         <div class="row" style="margin-top:10px; gap:8px;">
@@ -59,7 +59,13 @@
         </div>
         <p id="lockMsg" class="muted" style="margin-top:6px;"></p>
       </div>
+      <div class="card">
+        <div class="muted">USB-Schreibschutz (GPIO 26)</div>
+        <div class="kpi"><span id="roIcon">–</span> <span id="roState">–</span></div>
+        <div class="muted" id="roDetail">Steuerung nur per Hardware-Schalter</div>
+      </div>
     </div>
+
 
     <div class="card">
       <h3>Events</h3>
