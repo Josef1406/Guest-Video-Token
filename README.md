@@ -3,7 +3,7 @@
 Offline-Video-Token auf **Raspberry Pi Zero W**. Gäste einer Veranstaltung
 verbinden sich mit einem offenen WLAN und scannen den QR-Code auf ihrem
 Ausdruck, um das am Video-Gästebuch aufgenommene Video anzusehen, herunter-
-zuladen oder per WhatsApp zu teilen. **Kein Internet nötig.**
+zu laden oder per WhatsApp zu teilen. **Kein Internet nötig.**
 
 ## Betriebsmodi
 
@@ -135,7 +135,7 @@ Da Windows-Gäste die exFAT-Datenpartition per USB-Gadget direkt mounten, könne
 ### Empfohlene Strategie: Hardware-Schalter (GPIO 26)
 
 | GPIO 26 | Zustand | USB-Gadget | Bedeutung |
-|---|---|---|---|
+|---|---|---|---|---|
 | **gegen GND / LOW** | Admin | `ro=0` beschreibbar | Admin kopiert/ändert/löscht Videos |
 | **offen / HIGH** | Kunde | `ro=1` read-only | Gäste können nur kopieren, nichts verändern |
 
@@ -171,13 +171,22 @@ Die Admin-Seite zeigt:
 ## Skripte
 
 | Pfad nach Install | Zweck |
-|---|---|
-| `/usr/local/sbin/switch-mode` | `ap` / `usb` / `toggle` / `status` |
-| `/usr/local/sbin/pi-lock-videos` | Videos immutable + read-only |
+|---|---|---|
+| `/usr/local/sbin/switch-mode` | `ap` / `usb [0\|1]` / `toggle` / `reapply` / `status` |
+| `/usr/local/sbin/pi-lock-videos` | Videos immutable + read-only (ext4) |
 | `/usr/local/sbin/pi-unlock-videos` | Aufheben |
 | `/usr/local/sbin/gpio-switch.py` | GPIO-Daemon (via systemd) |
 
 Services: `video-token-ap.service` (Boot-Default AP), `video-token-gpio.service` (Taster/Schalter).
+
+### GPIO-Belegung
+
+| GPIO | Funktion | Verdrahtung |
+|---|---|---|
+| 17 | Taster „Modus umschalten" | gegen GND |
+| 5 | Schiebeschalter „AP" | gegen GND |
+| 6 | Schiebeschalter „USB" | gegen GND |
+| 26 | Schreibschutz-Schalter | gegen GND = Admin beschreibbar, offen = Kunde read-only |
 
 ## Hinweise
 
