@@ -3,7 +3,7 @@
 Offline-Video-Token auf **Raspberry Pi Zero W**. Gäste einer Veranstaltung
 verbinden sich mit einem offenen WLAN und scannen den QR-Code auf ihrem
 Ausdruck, um das am Video-Gästebuch aufgenommene Video anzusehen, herunter-
-zuladen oder per WhatsApp zu teilen. **Kein Internet nötig.**
+zu laden oder per WhatsApp zu teilen. **Kein Internet nötig.**
 
 ## Betriebsmodi
 
@@ -13,7 +13,14 @@ zuladen oder per WhatsApp zu teilen. **Kein Internet nötig.**
 | **USB** | Pi als USB-Massenspeicher am Windows-PC (exFAT `VIDEOS`) | `switch-mode usb` |
 | **Wartung** | SSH über AP (`ssh pi@192.168.4.1`) | – |
 
-Hardware-Umschaltung optional per GPIO 17 Taster oder Schiebeschalter GPIO 5 (AP) / GPIO 6 (USB) gegen GND.
+Der USB-Modus kennt zwei Schreibschutz-Zustände:
+
+| Zustand | Bedeutung | Wer darf schreiben |
+|---|---|---|
+| **Read-only** (`ro=1`) | Windows sieht das Laufwerk als schreibgeschützt | niemand (Kunden-Modus) |
+| **Beschreibbar** (`ro=0`) | Windows sieht das Laufwerk wie eine normale USB-Festplatte | Admin zum Aufspielen |
+
+Hardware-Umschaltung optional per GPIO 17 Taster oder Schiebeschalter GPIO 5 (AP) / GPIO 6 (USB) gegen GND. Schreibschutz per GPIO 26 gegen GND (Admin) bzw. offen/HIGH (Kunde).
 
 ## SD-Karte partitionieren
 
@@ -52,11 +59,12 @@ sudo reboot
 Nach dem Reboot erscheint das WLAN **`Video_GB`** (offen). Startseite:
 `http://192.168.4.1/`.
 
-## Videos aufspielen
+## Videos aufspielen (Admin-Workflow)
 
-1. `sudo switch-mode usb` (oder Schalter auf USB).
-2. Pi per USB-Kabel (Port **USB**, nicht **PWR**) an Windows anschließen.
-3. Laufwerk `VIDEOS` erscheint. Videos in Ordner-Struktur ablegen:
+1. **GPIO 26 auf Admin stellen** (gegen GND / LOW) – damit der USB-Gadget beschreibbar wird.
+2. Schiebeschalter auf **USB** (oder `sudo switch-mode usb`).
+3. Pi per USB-Kabel (Port **USB**, nicht **PWR**) an Windows anschließen.
+4. Laufwerk `VIDEOS` erscheint. Videos in Ordner-Struktur ablegen:
 
    ```
    VIDEOS:\<event-slug>\<event-slug>_TT_MM_JJJJ_HH_MM_SS_PIN.mp4
@@ -64,10 +72,11 @@ Nach dem Reboot erscheint das WLAN **`Video_GB`** (offen). Startseite:
 
    Beispiel: `hochzeit-mueller\hochzeit-mueller_06_07_2026_18_42_11_4711.mp4`
 
-4. Sicher trennen, `sudo switch-mode ap`.
-5. Datenpartition wird automatisch nach `/srv/videos/` gemountet
-   (siehe fstab-Eintrag; falls nicht: siehe unten „Schreibschutz").
-6. Optional: `sudo pi-lock-videos` gegen versehentliches Ändern.
+5. Sicher trennen, Schiebeschalter auf **AP** (oder `sudo switch-mode ap`).
+6. **GPIO 26 auf Kunde stellen** (offen / HIGH) – jetzt wird der USB-Gadget bei Bedarf read-only geladen.
+7. Datenpartition wird automatisch nach `/srv/videos/` gemountet (siehe fstab-Eintrag).
+
+> Hinweis: Der GPIO 26-Schalter wirkt nur auf den USB-Massenspeicher. Im AP-Modus greifen Gäste ausschließlich über den schreibgeschützten nginx-Webserver auf die Videos zu.
 
 ## QR-Code-URL-Schema
 
@@ -121,24 +130,63 @@ Am Token selbst muss nichts angepasst werden.
 
 ## Schreibschutz
 
+Da Windows-Gäste die exFAT-Datenpartition per USB-Gadget direkt mounten, können klassische Unix-Rechte (`chmod`, `chattr`) nicht verhindern, dass jemand im Explorer Dateien löscht oder umbenennt. Die einzige Strategie, die Windows akzeptiert, ist der **USB-Gadget-Read-Only-Flag `ro=1`**.
+
+### Empfohlene Strategie: Hardware-Schalter (GPIO 26)
+
+| GPIO 26 | Zustand | USB-Gadget | Bedeutung |
+|---|---|---|---|---|
+| **gegen GND / LOW** | Admin | `ro=0` beschreibbar | Admin kopiert/ändert/löscht Videos |
+| **offen / HIGH** | Kunde | `ro=1` read-only | Gäste können nur kopieren, nichts verändern |
+
+Vorgang:
+
+1. Token an Admin-PC anschließen, GPIO 26 auf GND → USB-Gadget beschreibbar.
+2. Videos mit dem Explorer/WinSCP kopieren oder bearbeiten.
+3. Token wieder abziehen, GPIO 26 offen/HIGH.
+4. Token an Kunden übergeben. Falls der Kunde in den USB-Modus schaltet, meldet Windows das Laufwerk als schreibgeschützt.
+
+### Technische Details
+
+- `switch-mode usb` liest den Wert aus `/var/lib/video-token/gadget_ro` (default `1`).
+- Der GPIO-Daemon `gpio-switch.py` schreibt diesen Wert bei GPIO 26 und ruft `switch-mode reapply` auf, falls der USB-Modus bereits aktiv ist.
+- Der aktive `ro`-Wert ist im Kernel-Modul-Parameter `/sys/module/g_mass_storage/parameters/ro` ablesbar.
+- Admin-Status-Seite (`http://192.168.4.1/admin.html`) zeigt Soll- und Ist-Wert des Schreibschutzes an.
+
+### Sekundärer Schutz (Dateisystem)
+
 - `sudo pi-lock-videos` setzt `chmod 0444` + `chattr +i` (funktioniert auf ext4).
 - `sudo pi-unlock-videos` macht es rückgängig.
-- Auf **exFAT** wirken `chattr`/`chmod` nicht. Zwei Strategien:
-  - **Einfach**: In `pi/switch-mode.sh` `GADGET_RO=1` setzen. Windows sieht das Laufwerk dann read-only – kein Löschen, keine Umbenennung möglich.
-  - **Robust**: Videos nach dem Kopieren zusätzlich in `/srv/videos` (ext4) belassen (statt exFAT direkt zu servieren) und dort locken.
+- Auf **exFAT** wirken `chattr`/`chmod` nicht – daher ist der GPIO 26/USB-Gadget-Read-Only-Flag die wirksame Schutzschicht für Windows.
 
-Der Default in `nginx.conf` liest aus `/srv/videos/` – wenn du die exFAT-Partition dort hin mountest, ist beides erreichbar.
+### Admin-Status
+
+Die Admin-Seite zeigt:
+
+- Betriebsmodus (AP / USB)
+- USB-Schreibschutz: Soll-Wert (Datei) vs. Ist-Wert (Kernel)
+- Dateisystem-Schreibschutz (`chmod`/`chattr`) als zusätzliche Info
+- Event-Übersicht und Speicherplatz
 
 ## Skripte
 
 | Pfad nach Install | Zweck |
-|---|---|
-| `/usr/local/sbin/switch-mode` | `ap` / `usb` / `toggle` / `status` |
-| `/usr/local/sbin/pi-lock-videos` | Videos immutable + read-only |
+|---|---|---|
+| `/usr/local/sbin/switch-mode` | `ap` / `usb [0\|1]` / `toggle` / `reapply` / `status` |
+| `/usr/local/sbin/pi-lock-videos` | Videos immutable + read-only (ext4) |
 | `/usr/local/sbin/pi-unlock-videos` | Aufheben |
 | `/usr/local/sbin/gpio-switch.py` | GPIO-Daemon (via systemd) |
 
 Services: `video-token-ap.service` (Boot-Default AP), `video-token-gpio.service` (Taster/Schalter).
+
+### GPIO-Belegung
+
+| GPIO | Funktion | Verdrahtung |
+|---|---|---|
+| 17 | Taster „Modus umschalten" | gegen GND |
+| 5 | Schiebeschalter „AP" | gegen GND |
+| 6 | Schiebeschalter „USB" | gegen GND |
+| 26 | Schreibschutz-Schalter | gegen GND = Admin beschreibbar, offen = Kunde read-only |
 
 ## Hinweise
 
