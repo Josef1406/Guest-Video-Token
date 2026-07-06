@@ -168,6 +168,7 @@ def build_status():
         "clients":    get_clients(),
         "disk":       get_disk(),
         "lock":       get_lock_state(),
+        "gadget_ro":  get_gadget_ro(),
         "timestamp":  int(time.time()),
     }
 
