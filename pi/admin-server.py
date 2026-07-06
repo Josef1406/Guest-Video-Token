@@ -143,8 +143,10 @@ def build_status():
         "video_count": sum(e["count"] for e in events),
         "clients":    get_clients(),
         "disk":       get_disk(),
+        "lock":       get_lock_state(),
         "timestamp":  int(time.time()),
     }
+
 
 # --- HTTP-Handler ----------------------------------------------------------
 
