@@ -61,6 +61,47 @@ def get_disk():
     total, used, free = shutil.disk_usage(target)
     return {"total": total, "used": used, "free": free, "path": target}
 
+def get_lock_state():
+    """Ermittelt Schreibschutz-Status der Videos.
+    Rückgabe: {"locked": bool|None, "detail": str, "fs": str}
+    """
+    fs = "unknown"
+    try:
+        out = subprocess.check_output(
+            ["findmnt", "-n", "-o", "FSTYPE", "--target", VIDEO_ROOT],
+            stderr=subprocess.DEVNULL, timeout=2
+        ).decode().strip()
+        if out: fs = out
+    except Exception:
+        pass
+    sample = None
+    try:
+        for ev in os.listdir(VIDEO_ROOT):
+            p = os.path.join(VIDEO_ROOT, ev)
+            if not os.path.isdir(p): continue
+            for f in os.listdir(p):
+                if f.lower().endswith(".mp4"):
+                    sample = os.path.join(p, f); break
+            if sample: break
+    except FileNotFoundError:
+        return {"locked": None, "detail": "Video-Verzeichnis fehlt", "fs": fs}
+    if not sample:
+        return {"locked": None, "detail": "Keine Videos vorhanden", "fs": fs}
+    mode = os.stat(sample).st_mode
+    writable = bool(mode & 0o200)
+    immutable = False
+    try:
+        out = subprocess.check_output(["lsattr", "-d", sample],
+            stderr=subprocess.DEVNULL, timeout=2).decode()
+        immutable = "i" in out.split()[0] if out.strip() else False
+    except Exception:
+        pass
+    locked = (not writable) or immutable
+    detail = []
+    if immutable: detail.append("chattr +i")
+    detail.append("0444" if not writable else "0644")
+    return {"locked": locked, "detail": " · ".join(detail), "fs": fs}
+
 _MAC_RE = re.compile(r"([0-9a-f]{2}(?::[0-9a-f]{2}){5})", re.I)
 _IP_RE  = re.compile(r"^\s*(\d+\.\d+\.\d+\.\d+)\s+([0-9a-f:]{17})", re.I | re.M)
 
