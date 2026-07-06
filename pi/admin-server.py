@@ -12,6 +12,7 @@ from http.cookies import SimpleCookie
 
 PIN_FILE      = "/etc/video-token/admin.pin"
 MODE_FILE     = "/var/lib/video-token/mode"
+RO_FILE       = "/var/lib/video-token/gadget_ro"
 VIDEO_ROOT    = "/srv/videos"
 SESSION_TTL   = 3600  # 1h
 SESSIONS: dict[str, float] = {}
