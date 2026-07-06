@@ -45,6 +45,29 @@ def get_mode() -> str:
         with open(MODE_FILE) as f: return f.read().strip()
     except Exception: return "unknown"
 
+def get_gadget_ro():
+    """Liest den vom GPIO-Daemon gepflegten Schreibschutz-Wunsch (Datei)
+    und prüft zusätzlich, ob das aktive g_mass_storage-Modul tatsächlich
+    ro=1 geladen wurde. Rückgabe: {"desired": 0|1|None, "active": 0|1|None}."""
+    desired = None
+    try:
+        with open(RO_FILE) as f:
+            desired = int(f.read().strip() or "1")
+    except Exception:
+        pass
+    active = None
+    try:
+        # /sys/module/g_mass_storage/parameters/ro existiert nur, wenn Modul geladen
+        with open("/sys/module/g_mass_storage/parameters/ro") as f:
+            # Format z.B. "1" oder "Y" – wir normalisieren
+            v = f.read().strip().lower()
+            active = 1 if v in ("1", "y", "yes", "true") else 0
+    except FileNotFoundError:
+        active = None  # Modul nicht geladen (AP-Modus)
+    except Exception:
+        pass
+    return {"desired": desired, "active": active}
+
 def get_events():
     events = []
     if not os.path.isdir(VIDEO_ROOT):
