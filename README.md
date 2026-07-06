@@ -80,6 +80,45 @@ http://192.168.4.1/v/<event-slug>/<event-slug>_TT_MM_JJJJ_HH_MM_SS_PIN.mp4
 Diese URL öffnet die Player-Seite mit Download- und WhatsApp-Button.
 `?raw=1` liefert direkt die MP4-Datei (für externe Player/Downloader).
 
+## Integration mit Video-Gästebuch
+
+Der Token ist bewusst generisch: er weiß nichts über Domains oder Cloud-Ziele.
+Die Entscheidung „Cloud oder Token" fällt beim Anlegen des Events **im
+Video-Gästebuch-Projekt** – der QR-Generator baut die URL entsprechend.
+
+Empfohlenes Konfig-Feld pro Event:
+
+```jsonc
+{
+  "event_slug": "hochzeit-mueller",
+  "delivery_mode": "token",           // "cloud" | "token"
+  "qr_base_url_cloud": "https://videos.deinedomain.de",
+  "qr_base_url_token": "http://192.168.4.1"
+}
+```
+
+Der QR-Generator wählt die Base-URL nach `delivery_mode` und hängt das
+bekannte Namensschema an:
+
+| Modus  | QR-URL |
+|---|---|
+| cloud  | `https://videos.deinedomain.de/<event>/<file>.mp4` |
+| token  | `http://192.168.4.1/v/<event>/<file>.mp4` |
+
+Wichtig:
+
+- Für Token-Events **`http://`** verwenden (kein HTTPS-Zertifikat auf dem Pi).
+- Beim Token-Modus zusätzlich `/v/` im Pfad – das triggert die Player-Seite
+  (`v.html`) mit Download- und WhatsApp-Button. Ohne `/v/` bzw. mit `?raw=1`
+  wird direkt die MP4-Datei ausgeliefert.
+- Der Datei- und Ordnername ist in beiden Modi identisch
+  (`<event-slug>_TT_MM_JJJJ_HH_MM_SS_PIN.mp4`) – dieselben Videos funktionieren
+  also ohne Umbenennen sowohl in der Cloud als auch auf dem Token.
+
+Am Token selbst muss nichts angepasst werden.
+
+
+
 ## Schreibschutz
 
 - `sudo pi-lock-videos` setzt `chmod 0444` + `chattr +i` (funktioniert auf ext4).
