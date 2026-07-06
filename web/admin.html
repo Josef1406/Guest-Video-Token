@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Video-Token · Admin</title>
+<link rel="stylesheet" href="/assets/styles.css" />
+<style>
+  .card { background:#161b22; border:1px solid #30363d; border-radius:12px; padding:16px; margin:12px 0; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+  .kpi  { font-size:2rem; font-weight:700; }
+  .muted{ color:#8b949e; font-size:.9rem; }
+  table { width:100%; border-collapse:collapse; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid #30363d; font-size:.95rem; }
+  .row  { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  input[type=password]{ padding:10px; border-radius:8px; border:1px solid #30363d; background:#0d1117; color:#e6edf3; font-size:1.1rem; width:180px; }
+  button{ padding:10px 16px; border-radius:8px; border:0; background:#238636; color:#fff; font-weight:600; cursor:pointer; }
+  button.secondary{ background:#30363d; }
+  .bar{ height:10px; background:#30363d; border-radius:6px; overflow:hidden; }
+  .bar>span{ display:block; height:100%; background:linear-gradient(90deg,#2ea043,#f0883e,#f85149); }
+</style>
+</head>
+<body>
+<main class="container">
+  <h1>🔧 Video-Token · Admin</h1>
+
+  <section id="login" class="card" hidden>
+    <h2>PIN eingeben</h2>
+    <form id="loginForm" class="row">
+      <input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" />
+      <button type="submit">Anmelden</button>
+    </form>
+    <p id="loginErr" class="muted" style="color:#f85149"></p>
+  </section>
+
+  <section id="dashboard" hidden>
+    <div class="row">
+      <div class="muted">Aktualisiert: <span id="ts">–</span> · Modus: <strong id="mode">–</strong></div>
+      <button class="secondary" id="logout">Logout</button>
+    </div>
+
+    <div class="grid">
+      <div class="card"><div class="muted">Video-Dateien</div><div class="kpi" id="videoCount">–</div></div>
+      <div class="card"><div class="muted">Events</div><div class="kpi" id="eventCount">–</div></div>
+      <div class="card"><div class="muted">Verbundene Geräte</div><div class="kpi" id="clientCount">–</div></div>
+      <div class="card">
+        <div class="muted">SD-Speicher (Videos)</div>
+        <div class="kpi" id="diskFree">–</div>
+        <div class="bar"><span id="diskBar" style="width:0%"></span></div>
+        <div class="muted" id="diskDetail"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Events</h3>
+      <table><thead><tr><th>Event</th><th>Videos</th><th>Größe</th></tr></thead>
+        <tbody id="eventsBody"><tr><td colspan="3" class="muted">–</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Verbundene Geräte</h3>
+      <table><thead><tr><th>Hostname</th><th>IP</th><th>MAC</th></tr></thead>
+        <tbody id="clientsBody"><tr><td colspan="3" class="muted">–</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+const fmtBytes = b => {
+  if (!b && b !== 0) return "–";
+  const u = ["B","KB","MB","GB","TB"]; let i=0;
+  while (b >= 1024 && i < u.length-1) { b/=1024; i++; }
+  return b.toFixed(b<10?2:b<100?1:0) + " " + u[i];
+};
+
+async function loadStatus() {
+  const r = await fetch("/api/admin/status", {credentials:"same-origin"});
+  if (r.status === 401) { showLogin(); return; }
+  const s = await r.json();
+  showDash();
+  document.getElementById("ts").textContent = new Date(s.timestamp*1000).toLocaleTimeString();
+  document.getElementById("mode").textContent = s.mode;
+  document.getElementById("videoCount").textContent = s.video_count;
+  document.getElementById("eventCount").textContent = s.events.length;
+  document.getElementById("clientCount").textContent = s.clients.length;
+
+  const d = s.disk, pct = d.total ? (d.used/d.total*100) : 0;
+  document.getElementById("diskFree").textContent = fmtBytes(d.free) + " frei";
+  document.getElementById("diskBar").style.width = pct.toFixed(1) + "%";
+  document.getElementById("diskDetail").textContent =
+    `${fmtBytes(d.used)} von ${fmtBytes(d.total)} belegt · ${d.path}`;
+
+  document.getElementById("eventsBody").innerHTML = s.events.length
+    ? s.events.map(e => `<tr><td>${e.name}</td><td>${e.count}</td><td>${fmtBytes(e.bytes)}</td></tr>`).join("")
+    : `<tr><td colspan="3" class="muted">Keine Events</td></tr>`;
+
+  document.getElementById("clientsBody").innerHTML = s.clients.length
+    ? s.clients.map(c => `<tr><td>${c.hostname || "–"}</td><td>${c.ip || "–"}</td><td>${c.mac}</td></tr>`).join("")
+    : `<tr><td colspan="3" class="muted">Keine Geräte verbunden</td></tr>`;
+}
+
+function showLogin(){ document.getElementById("login").hidden=false; document.getElementById("dashboard").hidden=true; }
+function showDash(){  document.getElementById("login").hidden=true;  document.getElementById("dashboard").hidden=false; }
+
+document.getElementById("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const pin = document.getElementById("pin").value;
+  const r = await fetch("/api/admin/login", {
+    method:"POST", credentials:"same-origin",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({pin})
+  });
+  if (r.ok) { document.getElementById("loginErr").textContent=""; loadStatus(); startPolling(); }
+  else       { document.getElementById("loginErr").textContent="Falscher PIN"; }
+});
+
+document.getElementById("logout").addEventListener("click", async () => {
+  await fetch("/api/admin/logout", {method:"POST", credentials:"same-origin"});
+  showLogin();
+});
+
+let timer=null;
+function startPolling(){ if(timer) clearInterval(timer); timer=setInterval(loadStatus, 5000); }
+
+loadStatus().then(startPolling);
+</script>
+</body>
+</html>
