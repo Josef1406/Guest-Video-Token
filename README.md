@@ -59,11 +59,12 @@ sudo reboot
 Nach dem Reboot erscheint das WLAN **`Video_GB`** (offen). Startseite:
 `http://192.168.4.1/`.
 
-## Videos aufspielen
+## Videos aufspielen (Admin-Workflow)
 
-1. `sudo switch-mode usb` (oder Schalter auf USB).
-2. Pi per USB-Kabel (Port **USB**, nicht **PWR**) an Windows anschließen.
-3. Laufwerk `VIDEOS` erscheint. Videos in Ordner-Struktur ablegen:
+1. **GPIO 26 auf Admin stellen** (gegen GND / LOW) – damit der USB-Gadget beschreibbar wird.
+2. Schiebeschalter auf **USB** (oder `sudo switch-mode usb`).
+3. Pi per USB-Kabel (Port **USB**, nicht **PWR**) an Windows anschließen.
+4. Laufwerk `VIDEOS` erscheint. Videos in Ordner-Struktur ablegen:
 
    ```
    VIDEOS:\<event-slug>\<event-slug>_TT_MM_JJJJ_HH_MM_SS_PIN.mp4
@@ -71,10 +72,11 @@ Nach dem Reboot erscheint das WLAN **`Video_GB`** (offen). Startseite:
 
    Beispiel: `hochzeit-mueller\hochzeit-mueller_06_07_2026_18_42_11_4711.mp4`
 
-4. Sicher trennen, `sudo switch-mode ap`.
-5. Datenpartition wird automatisch nach `/srv/videos/` gemountet
-   (siehe fstab-Eintrag; falls nicht: siehe unten „Schreibschutz").
-6. Optional: `sudo pi-lock-videos` gegen versehentliches Ändern.
+5. Sicher trennen, Schiebeschalter auf **AP** (oder `sudo switch-mode ap`).
+6. **GPIO 26 auf Kunde stellen** (offen / HIGH) – jetzt wird der USB-Gadget bei Bedarf read-only geladen.
+7. Datenpartition wird automatisch nach `/srv/videos/` gemountet (siehe fstab-Eintrag).
+
+> Hinweis: Der GPIO 26-Schalter wirkt nur auf den USB-Massenspeicher. Im AP-Modus greifen Gäste ausschließlich über den schreibgeschützten nginx-Webserver auf die Videos zu.
 
 ## QR-Code-URL-Schema
 
