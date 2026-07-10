@@ -3,7 +3,7 @@
 #
 # Der USB-Massenspeicher-Modus liest den Schreibschutz aus
 # /var/lib/video-token/gadget_ro (0 = beschreibbar, 1 = read-only).
-# Dieser Wert wird vom GPIO-Daemon (gpio-switch.py, GPIO 26) gepflegt.
+# Dieser Wert wird vom GPIO-Daemon (gpio-switch.py, GPIO 16) gepflegt.
 set -euo pipefail
 
 MODE_FILE=/var/lib/video-token/mode
