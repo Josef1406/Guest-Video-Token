@@ -178,9 +178,36 @@ Ablauf für einen Wartungs-Zugriff:
    der Token startet wieder normal (AP/USB). Der Schreibschutz-Schalter
    auf GPIO 16 arbeitet unabhängig davon.
 
-> Wichtig: Ohne Datei `wpa_supplicant-client.conf` passiert bei GPIO 27 LOW
-> beim Boot **nichts** – der Token startet normal weiter. So kann man sich
-> nie versehentlich aussperren.
+> Wichtig: Der Wartungsmodus braucht eine WLAN-Client-Konfiguration. Ab dieser
+> Version akzeptiert der Token entweder
+> `/etc/wpa_supplicant/wpa_supplicant-client.conf` **oder** eine auf der
+> Windows-sichtbaren Boot-Partition abgelegte `wpa_supplicant.conf`.
+
+### Recovery ohne SSH über Windows-PC
+
+Wenn der AP sichtbar ist, aber keine Verbindung zulässt, und der Wartungsmodus
+nicht im Router auftaucht:
+
+1. Pi ausschalten, SD-Karte in den Windows-PC stecken.
+2. Auf der Boot-Partition eine leere Datei `ssh` ohne Endung anlegen.
+3. Auf der Boot-Partition eine Datei `wpa_supplicant.conf` anlegen:
+
+   ```conf
+   country=DE
+   ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+   update_config=1
+
+   network={
+       ssid="DEIN_HEIM_WLAN_NAME"
+       psk="DEIN_HEIM_WLAN_PASSWORT"
+       key_mgmt=WPA-PSK
+   }
+   ```
+
+4. Optional zum Erzwingen des Wartungsmodus zusätzlich eine leere Datei
+   `video-token-client-mode` auf der Boot-Partition anlegen.
+5. SD-Karte zurück in den Pi, GPIO 27 beim Boot gegen GND legen und starten.
+6. In der Fritzbox nach der neuen IP suchen und per SSH verbinden.
 
 
 ### Technische Details

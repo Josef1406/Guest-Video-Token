@@ -2,7 +2,7 @@
 # Guest_Video_Token – Boot-Mode-Detection
 #
 # Liest GPIO 27 (BCM, Pin 13, gegen GND, intern pull-up) beim Boot:
-#   GPIO 27 LOW  + /etc/wpa_supplicant/wpa_supplicant-client.conf vorhanden
+#   GPIO 27 LOW  + WLAN-Client-Config vorhanden
 #                -> CLIENT-Modus (Pi verbindet sich mit dem konfigurierten
 #                   Heim-WLAN, DHCP; AP/USB-Services bleiben aus).
 #   sonst        -> NORMAL-Modus (AP oder USB je nach Schiebeschalter
@@ -16,7 +16,64 @@ set -euo pipefail
 PIN=27
 MARKER=/run/video-token-client-mode
 CLIENT_CONF=/etc/wpa_supplicant/wpa_supplicant-client.conf
+BOOT_CLIENT_CONF=/boot/firmware/wpa_supplicant.conf
+[[ -f /boot/wpa_supplicant.conf ]] && BOOT_CLIENT_CONF=/boot/wpa_supplicant.conf
+FORCE_CLIENT=/boot/firmware/video-token-client-mode
+[[ -f /boot/video-token-client-mode ]] && FORCE_CLIENT=/boot/video-token-client-mode
 DHCPCD_CONF=/etc/dhcpcd.conf
+NM_UNMANAGED_CONF=/etc/NetworkManager/conf.d/99-video-token-wlan0-unmanaged.conf
+
+write_nm_unmanaged() {
+  if [[ -d /etc/NetworkManager/conf.d ]]; then
+    cat > "$NM_UNMANAGED_CONF" <<'EOF'
+[keyfile]
+unmanaged-devices=interface-name:wlan0
+EOF
+  fi
+}
+
+remove_nm_unmanaged() {
+  rm -f "$NM_UNMANAGED_CONF"
+}
+
+write_nm_client_connection() {
+  local ssid="$1"
+  local psk="$2"
+  local nm_dir=/etc/NetworkManager/system-connections
+  local nm_file="$nm_dir/video-token-client.nmconnection"
+
+  [[ -z "$ssid" || ! -d /etc/NetworkManager ]] && return 0
+  install -d -m 0700 "$nm_dir"
+  cat > "$nm_file" <<EOF
+[connection]
+id=video-token-client
+uuid=8b1c1a8d-3a56-47e1-9a86-6ec1a8828c27
+type=wifi
+interface-name=wlan0
+autoconnect=true
+
+[wifi]
+mode=infrastructure
+ssid=$ssid
+
+[wifi-security]
+key-mgmt=wpa-psk
+psk=$psk
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=ignore
+EOF
+  chmod 0600 "$nm_file"
+}
+
+extract_wpa_value() {
+  local key="$1"
+  local file="$2"
+  sed -nE "s/^[[:space:]]*${key}=\"(.*)\"[[:space:]]*$/\1/p" "$file" | head -n1
+}
 
 # Pin als Eingang mit Pull-Up konfigurieren und Pegel lesen.
 LEVEL=1
@@ -34,9 +91,20 @@ echo "boot-mode: GPIO $PIN level=$LEVEL"
 
 rm -f "$MARKER"
 
-if [[ "$LEVEL" == "0" && -f "$CLIENT_CONF" ]]; then
+ACTIVE_CLIENT_CONF=""
+if [[ -f "$CLIENT_CONF" ]]; then
+  ACTIVE_CLIENT_CONF="$CLIENT_CONF"
+elif [[ -f "$BOOT_CLIENT_CONF" ]]; then
+  ACTIVE_CLIENT_CONF="$BOOT_CLIENT_CONF"
+fi
+
+FORCE=0
+[[ -f "$FORCE_CLIENT" ]] && FORCE=1
+
+if [[ ( "$LEVEL" == "0" || "$FORCE" == "1" ) && -n "$ACTIVE_CLIENT_CONF" ]]; then
   echo "boot-mode: CLIENT (Heim-WLAN)"
   : > "$MARKER"
+  remove_nm_unmanaged
 
   # AP-Static-IP-Block in dhcpcd.conf deaktivieren (Marker #vt-ap#).
   if grep -q '^interface wlan0$' "$DHCPCD_CONF"; then
@@ -47,13 +115,42 @@ if [[ "$LEVEL" == "0" && -f "$CLIENT_CONF" ]]; then
       "$DHCPCD_CONF"
   fi
 
-  # wpa_supplicant mit Client-Config aktivieren
-  install -m 0600 "$CLIENT_CONF" /etc/wpa_supplicant/wpa_supplicant.conf
-  systemctl unmask wpa_supplicant.service 2>/dev/null || true
-  systemctl enable wpa_supplicant.service 2>/dev/null || true
+  # Client-Config aktivieren. Unterstützt sowohl die installierte Config
+  # als auch eine per Windows auf bootfs abgelegte wpa_supplicant.conf.
+  install -d -m 0755 /etc/wpa_supplicant
+  install -m 0600 "$ACTIVE_CLIENT_CONF" /etc/wpa_supplicant/wpa_supplicant.conf
+
+  # Raspberry Pi OS Bookworm/Trixie nutzt oft NetworkManager. Falls nmcli
+  # vorhanden ist, legen wir daraus eine native WLAN-Verbindung an; ältere
+  # Systeme nutzen weiter wpa_supplicant + dhcpcd.
+  if command -v nmcli >/dev/null 2>&1; then
+    SSID="$(extract_wpa_value ssid /etc/wpa_supplicant/wpa_supplicant.conf)"
+    PSK="$(extract_wpa_value psk /etc/wpa_supplicant/wpa_supplicant.conf)"
+    write_nm_client_connection "$SSID" "$PSK"
+    nmcli radio wifi on 2>/dev/null || true
+    nmcli connection delete video-token-client 2>/dev/null || true
+    if [[ -n "$SSID" ]]; then
+      nmcli connection add type wifi ifname wlan0 con-name video-token-client ssid "$SSID" 2>/dev/null || true
+      nmcli connection modify video-token-client ipv4.method auto ipv6.method ignore connection.autoconnect yes 2>/dev/null || true
+      if [[ -n "$PSK" ]]; then
+        nmcli connection modify video-token-client wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PSK" 2>/dev/null || true
+      fi
+      nmcli device set wlan0 managed yes 2>/dev/null || true
+    fi
+    systemctl disable wpa_supplicant.service 2>/dev/null || true
+  else
+    systemctl unmask wpa_supplicant.service 2>/dev/null || true
+    systemctl enable wpa_supplicant.service 2>/dev/null || true
+  fi
 else
   echo "boot-mode: NORMAL (AP/USB)"
+  write_nm_unmanaged
   # AP-Static-IP-Block wieder aktivieren, falls zuvor deaktiviert.
   sed -i 's|^#vt-ap# ||' "$DHCPCD_CONF" || true
+  if command -v nmcli >/dev/null 2>&1; then
+    nmcli connection down video-token-client 2>/dev/null || true
+    nmcli connection delete video-token-client 2>/dev/null || true
+    rm -f /etc/NetworkManager/system-connections/video-token-client.nmconnection
+  fi
   systemctl disable wpa_supplicant.service 2>/dev/null || true
 fi
