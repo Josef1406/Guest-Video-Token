@@ -19,12 +19,16 @@ CLIENT_CONF=/etc/wpa_supplicant/wpa_supplicant-client.conf
 DHCPCD_CONF=/etc/dhcpcd.conf
 
 # Pin als Eingang mit Pull-Up konfigurieren und Pegel lesen.
+LEVEL=1
 if command -v raspi-gpio >/dev/null 2>&1; then
   raspi-gpio set "$PIN" ip pu || true
   sleep 0.1
   LEVEL=$(raspi-gpio get "$PIN" | grep -oE "level=[01]" | head -n1 | cut -d= -f2)
-else
-  LEVEL=1
+elif command -v pinctrl >/dev/null 2>&1; then
+  pinctrl set "$PIN" ip pu || true
+  sleep 0.1
+  LEVEL=$(pinctrl get "$PIN" | grep -oE "\| (hi|lo)" | head -n1 | awk '{print ($2=="hi")?1:0}')
+  [[ -z "$LEVEL" ]] && LEVEL=1
 fi
 echo "boot-mode: GPIO $PIN level=$LEVEL"
 
