@@ -13,7 +13,7 @@ zu laden oder per WhatsApp zu teilen. **Kein Internet nötig.**
 | **GPIO 25** | 22 | Schiebeschalter Position **USB** | gegen GND = USB-Modus |
 | **GPIO 16** | 36 | **Schreibschutz** für USB-Gadget | LOW = Admin/beschreibbar, HIGH = Kunde/read-only |
 | **GPIO 27** | 13 | **Wartungs-Modus** (nur beim Boot) | LOW beim Boot = Heim-WLAN-Client |
-| GPIO 17 | Pin 11 | *Optionaler Taster* „Modus umschalten“ | gegen GND | Nur falls kein Schiebeschalter verwendet wird |
+| GPIO 17 | 11 | *Optionaler Taster* „Modus umschalten" | Nur falls kein Schiebeschalter verwendet wird |
 
 > **Wichtig:** Die internen Pull-Ups sind aktiviert. Alle Eingänge sind daher im unbeschalteten Zustand **HIGH** (offen) und werden durch Verbindung mit **GND** als aktiv erkannt.
 
