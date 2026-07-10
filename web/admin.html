@@ -92,9 +92,18 @@ const fmtBytes = b => {
 };
 
 async function loadStatus() {
-  const r = await fetch("/api/admin/status", {credentials:"same-origin"});
+  let r;
+  try {
+    r = await fetch("/api/admin/status", {credentials:"same-origin"});
+  } catch (e) {
+    showLogin("Admin-Service nicht erreichbar: " + e.message);
+    return;
+  }
   if (r.status === 401) { showLogin(); return; }
-  const s = await r.json();
+  if (!r.ok) { showLogin("Admin-API Fehler: HTTP " + r.status + " (läuft video-token-admin?)"); return; }
+  let s;
+  try { s = await r.json(); }
+  catch (e) { showLogin("Ungültige API-Antwort (kein JSON) — nginx-Proxy zu 127.0.0.1:8080 prüfen"); return; }
   showDash();
   document.getElementById("ts").textContent = new Date(s.timestamp*1000).toLocaleTimeString();
   document.getElementById("mode").textContent = s.mode;
