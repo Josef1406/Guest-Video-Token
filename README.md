@@ -20,7 +20,7 @@ Der USB-Modus kennt zwei Schreibschutz-Zustände:
 | **Read-only** (`ro=1`) | Windows sieht das Laufwerk als schreibgeschützt | niemand (Kunden-Modus) |
 | **Beschreibbar** (`ro=0`) | Windows sieht das Laufwerk wie eine normale USB-Festplatte | Admin zum Aufspielen |
 
-Hardware-Umschaltung optional per GPIO 17 Taster oder Schiebeschalter GPIO 5 (AP) / GPIO 6 (USB) gegen GND. Schreibschutz per GPIO 27 gegen GND (Admin) bzw. offen/HIGH (Kunde).
+Hardware-Umschaltung optional per GPIO 17 Taster oder Schiebeschalter GPIO 24 (AP) / GPIO 25 (USB) gegen GND. Schreibschutz per GPIO 16 gegen GND (Admin) bzw. offen/HIGH (Kunde). GPIO 27 beim Boot LOW aktiviert den Wartungs-/Client-Modus.
 
 ## SD-Karte partitionieren
 
@@ -221,9 +221,10 @@ Services: `video-token-ap.service` (Boot-Default AP), `video-token-gpio.service`
 | GPIO | Funktion | Verdrahtung |
 |---|---|---|
 | 17 | Taster „Modus umschalten" | gegen GND |
-| 5 | Schiebeschalter „AP" | gegen GND |
-| 6 | Schiebeschalter „USB" | gegen GND |
-| 26 | Schreibschutz-Schalter | gegen GND = Admin beschreibbar, offen = Kunde read-only |
+| 24 | Schiebeschalter „AP" | gegen GND |
+| 25 | Schiebeschalter „USB" | gegen GND |
+| 16 | Schreibschutz-Schalter | gegen GND = Admin beschreibbar, offen = Kunde read-only |
+| 27 | Wartungs-Modus (nur beim Boot ausgewertet) | gegen GND beim Boot = Heim-WLAN-Client |
 
 ## Hinweise
 

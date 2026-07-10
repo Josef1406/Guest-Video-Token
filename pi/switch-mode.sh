@@ -35,7 +35,7 @@ usb_mode() {
   echo "usb" > "$MODE_FILE"
 }
 
-# Wird vom GPIO-Daemon bei Änderung von GPIO 26 aufgerufen: nur wenn wir
+# Wird vom GPIO-Daemon bei Änderung von GPIO 16 aufgerufen: nur wenn wir
 # gerade im USB-Modus sind, den Gadget mit neuem ro-Wert neu laden.
 reapply() {
   if [[ "$(current)" == "usb" ]]; then
