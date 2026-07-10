@@ -1,0 +1,14 @@
+[Unit]
+Description=Guest_Video_Token Boot-Mode (GPIO 27 = Client vs. AP/USB)
+DefaultDependencies=no
+Before=dhcpcd.service hostapd.service dnsmasq.service network-pre.target wpa_supplicant.service
+After=local-fs.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/video-token-bootmode
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target

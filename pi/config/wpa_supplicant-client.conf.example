@@ -1,0 +1,9 @@
+country=AT
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+
+network={
+    ssid="DEIN_HEIM_WLAN"
+    psk="DEIN_WLAN_PASSWORT"
+    key_mgmt=WPA-PSK
+}
