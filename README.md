@@ -5,13 +5,27 @@ verbinden sich mit einem offenen WLAN und scannen den QR-Code auf ihrem
 Ausdruck, um das am Video-Gästebuch aufgenommene Video anzusehen, herunter-
 zu laden oder per WhatsApp zu teilen. **Kein Internet nötig.**
 
+## GPIO-Belegung (aktuell)
+
+| GPIO | Phys. Pin | Funktion | Logik |
+|---|---|---|---|
+| **GPIO 24** | 18 | Schiebeschalter Position **AP** | gegen GND = AP-Modus |
+| **GPIO 25** | 22 | Schiebeschalter Position **USB** | gegen GND = USB-Modus |
+| **GPIO 16** | 36 | **Schreibschutz** für USB-Gadget | LOW = Admin/beschreibbar, HIGH = Kunde/read-only |
+| **GPIO 27** | 13 | **Wartungs-Modus** (nur beim Boot) | LOW beim Boot = Heim-WLAN-Client |
+| GPIO 17 | 11 | *Optionaler Taster* „Modus umschalten" | Nur falls kein Schiebeschalter verwendet wird |
+
+**Schiebeschalter-Verdrahtung (3-polig):** Mittlerer Pin → **GND**, Außenpin 1 → **GPIO 24**, Außenpin 2 → **GPIO 25**.
+
+> **Wichtig:** Die internen Pull-Ups sind aktiviert. Alle Eingänge sind daher im unbeschalteten Zustand **HIGH** (offen) und werden durch Verbindung mit **GND** als aktiv erkannt.
+
 ## Betriebsmodi
 
 | Modus | Beschreibung | Umschalten |
 |---|---|---|
-| **AP** (Default) | Offenes WLAN `Video_GB`, nginx auf `192.168.4.1` | `switch-mode ap` |
-| **USB** | Pi als USB-Massenspeicher am Windows-PC (exFAT `VIDEOS`) | `switch-mode usb` |
-| **Wartung** | SSH über AP (`ssh pi@192.168.4.1`) | – |
+| **AP** (Default) | Offenes WLAN `Video_GB`, nginx auf `192.168.4.1` | Schalter auf GPIO 24 / `switch-mode ap` |
+| **USB** | Pi als USB-Massenspeicher am Windows-PC (exFAT `VIDEOS`) | Schalter auf GPIO 25 / `switch-mode usb` |
+| **Wartung** | SSH über Heim-WLAN (GPIO 27 LOW beim Boot) | – |
 
 Der USB-Modus kennt zwei Schreibschutz-Zustände:
 
@@ -20,7 +34,9 @@ Der USB-Modus kennt zwei Schreibschutz-Zustände:
 | **Read-only** (`ro=1`) | Windows sieht das Laufwerk als schreibgeschützt | niemand (Kunden-Modus) |
 | **Beschreibbar** (`ro=0`) | Windows sieht das Laufwerk wie eine normale USB-Festplatte | Admin zum Aufspielen |
 
-Hardware-Umschaltung optional per GPIO 17 Taster oder Schiebeschalter GPIO 24 (AP) / GPIO 25 (USB) gegen GND. Schreibschutz per GPIO 16 gegen GND (Admin) bzw. offen/HIGH (Kunde). GPIO 27 beim Boot LOW aktiviert den Wartungs-/Client-Modus.
+- **Modus-Umschaltung** erfolgt mit dem Schiebeschalter an **GPIO 24 (AP)** und **GPIO 25 (USB)**. Der mittlere Pin des Schalters gehört an **GND**.
+- **Schreibschutz** wird über **GPIO 16** gesteuert: gegen GND = Admin/beschreibbar, offen/HIGH = Kunde/read-only.
+- **Wartungsmodus** wird einmalig beim Boot durch **GPIO 27 LOW** aktiviert (siehe Abschnitt unten).
 
 ## SD-Karte partitionieren
 
@@ -235,7 +251,7 @@ Die Admin-Seite zeigt:
 ## Skripte
 
 | Pfad nach Install | Zweck |
-|---|---|---|
+|---|---|
 | `/usr/local/sbin/switch-mode` | `ap` / `usb [0\|1]` / `toggle` / `reapply` / `status` |
 | `/usr/local/sbin/pi-lock-videos` | Videos immutable + read-only (ext4) |
 | `/usr/local/sbin/pi-unlock-videos` | Aufheben |
@@ -243,15 +259,17 @@ Die Admin-Seite zeigt:
 
 Services: `video-token-ap.service` (Boot-Default AP), `video-token-gpio.service` (Taster/Schalter).
 
-### GPIO-Belegung
+### GPIO-Belegung (Zusammenfassung)
 
-| GPIO | Funktion | Verdrahtung |
-|---|---|---|
-| 17 | Taster „Modus umschalten" | gegen GND |
-| 24 | Schiebeschalter „AP" | gegen GND |
-| 25 | Schiebeschalter „USB" | gegen GND |
-| 16 | Schreibschutz-Schalter | gegen GND = Admin beschreibbar, offen = Kunde read-only |
-| 27 | Wartungs-Modus (nur beim Boot ausgewertet) | gegen GND beim Boot = Heim-WLAN-Client |
+| GPIO | Phys. Pin | Funktion | Logik |
+|---|---|---|---|
+| **24** | 18 | Schiebeschalter „AP" | gegen GND = AP-Modus |
+| **25** | 22 | Schiebeschalter „USB" | gegen GND = USB-Modus |
+| **16** | 36 | Schreibschutz-Schalter | LOW = Admin/beschreibbar, HIGH = Kunde/read-only |
+| **27** | 13 | Wartungs-Modus (nur beim Boot) | LOW beim Boot = Heim-WLAN-Client |
+| 17 | 11 | *Optionaler Taster* „Modus umschalten" | Nur falls kein Schiebeschalter verwendet wird |
+
+Schiebeschalter-Verdrahtung (3-polig): Mittlerer Pin → **GND**, Außenpin 1 → **GPIO 24**, Außenpin 2 → **GPIO 25**.
 
 ## Hinweise
 
