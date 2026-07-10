@@ -257,15 +257,17 @@ Die Admin-Seite zeigt:
 
 Services: `video-token-ap.service` (Boot-Default AP), `video-token-gpio.service` (Taster/Schalter).
 
-### GPIO-Belegung
+### GPIO-Belegung (Zusammenfassung)
 
-| GPIO | Funktion | Verdrahtung |
-|---|---|---|
-| 17 | Taster „Modus umschalten" | gegen GND |
-| 24 | Schiebeschalter „AP" | gegen GND |
-| 25 | Schiebeschalter „USB" | gegen GND |
-| 16 | Schreibschutz-Schalter | gegen GND = Admin beschreibbar, offen = Kunde read-only |
-| 27 | Wartungs-Modus (nur beim Boot ausgewertet) | gegen GND beim Boot = Heim-WLAN-Client |
+| GPIO | Phys. Pin | Funktion | Verdrahtung | Logik |
+|---|---|---|---|---|
+| **24** | 18 | Schiebeschalter „AP" | Außenpin des Schalters | gegen GND = AP-Modus |
+| **25** | 22 | Schiebeschalter „USB" | Außenpin des Schalters | gegen GND = USB-Modus |
+| **16** | 36 | Schreibschutz-Schalter | gegen GND | LOW = Admin/beschreibbar, HIGH = Kunde/read-only |
+| **27** | 13 | Wartungs-Modus (nur beim Boot) | gegen GND beim Boot | LOW = Heim-WLAN-Client |
+| 17 | 11 | *Optionaler Taster* „Modus umschalten" | gegen GND | Nur falls kein Schiebeschalter verwendet wird |
+
+Schiebeschalter-Verdrahtung (3-polig): Mittlerer Pin → **GND**, Außenpin 1 → **GPIO 24**, Außenpin 2 → **GPIO 25**.
 
 ## Hinweise
 
