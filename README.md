@@ -5,13 +5,25 @@ verbinden sich mit einem offenen WLAN und scannen den QR-Code auf ihrem
 Ausdruck, um das am Video-Gästebuch aufgenommene Video anzusehen, herunter-
 zu laden oder per WhatsApp zu teilen. **Kein Internet nötig.**
 
+## GPIO-Belegung (aktuell)
+
+| GPIO | Pin | Funktion | Verdrahtung | Zustand |
+|---|---|---|---|---|
+| **GPIO 24** | Pin 18 | Schiebeschalter Position **AP** | Mittlerer Pin des Schalters → **GND**, linker/rechter Pin → GPIO 24 | gegen GND = AP-Modus |
+| **GPIO 25** | Pin 22 | Schiebeschalter Position **USB** | anderer Außenpin des Schalters → GPIO 25 | gegen GND = USB-Modus |
+| **GPIO 16** | Pin 36 | **Schreibschutz** für USB-Gadget | Schalter gegen GND | LOW = Admin/beschreibbar, HIGH/offen = Kunde/read-only |
+| **GPIO 27** | Pin 13 | **Wartungs-Modus** (nur beim Boot ausgewertet) | Schalter gegen GND | LOW beim Boot = Heim-WLAN-Client |
+| GPIO 17 | Pin 11 | *Optionaler Taster* „Modus umschalten“ | gegen GND | Nur falls kein Schiebeschalter verwendet wird |
+
+> **Wichtig:** Die internen Pull-Ups sind aktiviert. Alle Eingänge sind daher im unbeschalteten Zustand **HIGH** (offen) und werden durch Verbindung mit **GND** als aktiv erkannt.
+
 ## Betriebsmodi
 
 | Modus | Beschreibung | Umschalten |
 |---|---|---|
-| **AP** (Default) | Offenes WLAN `Video_GB`, nginx auf `192.168.4.1` | `switch-mode ap` |
-| **USB** | Pi als USB-Massenspeicher am Windows-PC (exFAT `VIDEOS`) | `switch-mode usb` |
-| **Wartung** | SSH über AP (`ssh pi@192.168.4.1`) | – |
+| **AP** (Default) | Offenes WLAN `Video_GB`, nginx auf `192.168.4.1` | Schalter auf GPIO 24 / `switch-mode ap` |
+| **USB** | Pi als USB-Massenspeicher am Windows-PC (exFAT `VIDEOS`) | Schalter auf GPIO 25 / `switch-mode usb` |
+| **Wartung** | SSH über Heim-WLAN (GPIO 27 LOW beim Boot) | – |
 
 Der USB-Modus kennt zwei Schreibschutz-Zustände:
 
@@ -20,7 +32,9 @@ Der USB-Modus kennt zwei Schreibschutz-Zustände:
 | **Read-only** (`ro=1`) | Windows sieht das Laufwerk als schreibgeschützt | niemand (Kunden-Modus) |
 | **Beschreibbar** (`ro=0`) | Windows sieht das Laufwerk wie eine normale USB-Festplatte | Admin zum Aufspielen |
 
-Hardware-Umschaltung optional per GPIO 17 Taster oder Schiebeschalter GPIO 24 (AP) / GPIO 25 (USB) gegen GND. Schreibschutz per GPIO 16 gegen GND (Admin) bzw. offen/HIGH (Kunde). GPIO 27 beim Boot LOW aktiviert den Wartungs-/Client-Modus.
+- **Modus-Umschaltung** erfolgt mit dem Schiebeschalter an **GPIO 24 (AP)** und **GPIO 25 (USB)**. Der mittlere Pin des Schalters gehört an **GND**.
+- **Schreibschutz** wird über **GPIO 16** gesteuert: gegen GND = Admin/beschreibbar, offen/HIGH = Kunde/read-only.
+- **Wartungsmodus** wird einmalig beim Boot durch **GPIO 27 LOW** aktiviert (siehe Abschnitt unten).
 
 ## SD-Karte partitionieren
 
