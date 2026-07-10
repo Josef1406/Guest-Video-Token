@@ -20,7 +20,7 @@ Der USB-Modus kennt zwei Schreibschutz-Zustände:
 | **Read-only** (`ro=1`) | Windows sieht das Laufwerk als schreibgeschützt | niemand (Kunden-Modus) |
 | **Beschreibbar** (`ro=0`) | Windows sieht das Laufwerk wie eine normale USB-Festplatte | Admin zum Aufspielen |
 
-Hardware-Umschaltung optional per GPIO 17 Taster oder Schiebeschalter GPIO 5 (AP) / GPIO 6 (USB) gegen GND. Schreibschutz per GPIO 26 gegen GND (Admin) bzw. offen/HIGH (Kunde).
+Hardware-Umschaltung optional per GPIO 17 Taster oder Schiebeschalter GPIO 5 (AP) / GPIO 6 (USB) gegen GND. Schreibschutz per GPIO 27 gegen GND (Admin) bzw. offen/HIGH (Kunde).
 
 ## SD-Karte partitionieren
 
@@ -61,7 +61,7 @@ Nach dem Reboot erscheint das WLAN **`Video_GB`** (offen). Startseite:
 
 ## Videos aufspielen (Admin-Workflow)
 
-1. **GPIO 26 auf Admin stellen** (gegen GND / LOW) – damit der USB-Gadget beschreibbar wird.
+1. **GPIO 27 auf Admin stellen** (gegen GND / LOW) – damit der USB-Gadget beschreibbar wird.
 2. Schiebeschalter auf **USB** (oder `sudo switch-mode usb`).
 3. Pi per USB-Kabel (Port **USB**, nicht **PWR**) an Windows anschließen.
 4. Laufwerk `VIDEOS` erscheint. Videos in Ordner-Struktur ablegen:
@@ -73,10 +73,10 @@ Nach dem Reboot erscheint das WLAN **`Video_GB`** (offen). Startseite:
    Beispiel: `hochzeit-mueller\hochzeit-mueller_06_07_2026_18_42_11_4711.mp4`
 
 5. Sicher trennen, Schiebeschalter auf **AP** (oder `sudo switch-mode ap`).
-6. **GPIO 26 auf Kunde stellen** (offen / HIGH) – jetzt wird der USB-Gadget bei Bedarf read-only geladen.
+6. **GPIO 27 auf Kunde stellen** (offen / HIGH) – jetzt wird der USB-Gadget bei Bedarf read-only geladen.
 7. Datenpartition wird automatisch nach `/srv/videos/` gemountet (siehe fstab-Eintrag).
 
-> Hinweis: Der GPIO 26-Schalter wirkt nur auf den USB-Massenspeicher. Im AP-Modus greifen Gäste ausschließlich über den schreibgeschützten nginx-Webserver auf die Videos zu.
+> Hinweis: Der GPIO 27-Schalter wirkt nur auf den USB-Massenspeicher. Im AP-Modus greifen Gäste ausschließlich über den schreibgeschützten nginx-Webserver auf die Videos zu.
 
 ## QR-Code-URL-Schema
 
@@ -132,24 +132,24 @@ Am Token selbst muss nichts angepasst werden.
 
 Da Windows-Gäste die exFAT-Datenpartition per USB-Gadget direkt mounten, können klassische Unix-Rechte (`chmod`, `chattr`) nicht verhindern, dass jemand im Explorer Dateien löscht oder umbenennt. Die einzige Strategie, die Windows akzeptiert, ist der **USB-Gadget-Read-Only-Flag `ro=1`**.
 
-### Empfohlene Strategie: Hardware-Schalter (GPIO 26)
+### Empfohlene Strategie: Hardware-Schalter (GPIO 27)
 
-| GPIO 26 | Zustand | USB-Gadget | Bedeutung |
+| GPIO 27 | Zustand | USB-Gadget | Bedeutung |
 |---|---|---|---|---|
 | **gegen GND / LOW** | Admin | `ro=0` beschreibbar | Admin kopiert/ändert/löscht Videos |
 | **offen / HIGH** | Kunde | `ro=1` read-only | Gäste können nur kopieren, nichts verändern |
 
 Vorgang:
 
-1. Token an Admin-PC anschließen, GPIO 26 auf GND → USB-Gadget beschreibbar.
+1. Token an Admin-PC anschließen, GPIO 27 auf GND → USB-Gadget beschreibbar.
 2. Videos mit dem Explorer/WinSCP kopieren oder bearbeiten.
-3. Token wieder abziehen, GPIO 26 offen/HIGH.
+3. Token wieder abziehen, GPIO 27 offen/HIGH.
 4. Token an Kunden übergeben. Falls der Kunde in den USB-Modus schaltet, meldet Windows das Laufwerk als schreibgeschützt.
 
 ### Technische Details
 
 - `switch-mode usb` liest den Wert aus `/var/lib/video-token/gadget_ro` (default `1`).
-- Der GPIO-Daemon `gpio-switch.py` schreibt diesen Wert bei GPIO 26 und ruft `switch-mode reapply` auf, falls der USB-Modus bereits aktiv ist.
+- Der GPIO-Daemon `gpio-switch.py` schreibt diesen Wert bei GPIO 27 und ruft `switch-mode reapply` auf, falls der USB-Modus bereits aktiv ist.
 - Der aktive `ro`-Wert ist im Kernel-Modul-Parameter `/sys/module/g_mass_storage/parameters/ro` ablesbar.
 - Admin-Status-Seite (`http://192.168.4.1/admin.html`) zeigt Soll- und Ist-Wert des Schreibschutzes an.
 
@@ -157,7 +157,7 @@ Vorgang:
 
 - `sudo pi-lock-videos` setzt `chmod 0444` + `chattr +i` (funktioniert auf ext4).
 - `sudo pi-unlock-videos` macht es rückgängig.
-- Auf **exFAT** wirken `chattr`/`chmod` nicht – daher ist der GPIO 26/USB-Gadget-Read-Only-Flag die wirksame Schutzschicht für Windows.
+- Auf **exFAT** wirken `chattr`/`chmod` nicht – daher ist der GPIO 27/USB-Gadget-Read-Only-Flag die wirksame Schutzschicht für Windows.
 
 ### Admin-Status
 
