@@ -1,7 +1,8 @@
 [Unit]
 Description=Guest_Video_Token AP-Modus beim Boot
-After=network.target dhcpcd.service
+After=network.target dhcpcd.service video-token-bootmode.service
 Wants=dhcpcd.service
+ConditionPathExists=!/run/video-token-client-mode
 
 [Service]
 Type=oneshot
