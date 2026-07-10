@@ -5,8 +5,11 @@ Belegte GPIOs (BCM-Nummerierung, alle gegen GND, intern pull-up):
 - GPIO 17 : Taster        -> Modus umschalten (AP <-> USB)
 - GPIO  5 : Schiebeschalter Position "AP"  (optional)
 - GPIO  6 : Schiebeschalter Position "USB" (optional)
-- GPIO 26 : Schreibschutz-Schalter für den USB-Gadget
-             offen / HIGH  -> ro=1  (Kunden-Modus: nur lesen)
+- GPIO 27 : Doppelfunktion
+     * Beim Boot LOW -> Client-Modus (Pi verbindet sich mit Heim-WLAN,
+       siehe boot-mode.sh). Prüfung erfolgt EINMAL beim Boot.
+     * Zur Laufzeit  -> Schreibschutz-Schalter für den USB-Gadget:
+       offen / HIGH  -> ro=1  (Kunden-Modus: nur lesen)
              gegen GND / LOW -> ro=0 (Admin-Modus: Videos aufspielen)
 """
 import subprocess
@@ -72,10 +75,12 @@ def main() -> None:
     except Exception as e:  # noqa: BLE001
         print(f"Schiebeschalter nicht verfügbar: {e}", flush=True)
 
-    # Schreibschutz-Schalter (GPIO 26). Optional: wenn Pin nicht verdrahtet,
+    # Schreibschutz-Schalter (GPIO 27). Optional: wenn Pin nicht verdrahtet,
     # bleibt der Default aus /var/lib/video-token/gadget_ro erhalten.
+    # Hinweis: Beim Boot wird derselbe Pin von boot-mode.sh gelesen und
+    # entscheidet dort über Client-Modus vs. Normal-Modus.
     try:
-        wp_pin = Button(26, pull_up=True, bounce_time=0.1)
+        wp_pin = Button(27, pull_up=True, bounce_time=0.1)
         wp_pin.when_pressed  = on_wp_unlocked   # gegen GND -> Admin/beschreibbar
         wp_pin.when_released = on_wp_locked     # offen     -> Kunde/read-only
         # Startzustand anwenden

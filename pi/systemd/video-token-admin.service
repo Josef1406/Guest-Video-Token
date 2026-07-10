@@ -1,6 +1,7 @@
 [Unit]
 Description=Guest_Video_Token Admin API
 After=network.target
+ConditionPathExists=!/run/video-token-client-mode
 
 [Service]
 Type=simple

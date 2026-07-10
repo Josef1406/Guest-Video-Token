@@ -18,7 +18,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   hostapd dnsmasq nginx-light \
   exfat-fuse exfatprogs \
   python3-gpiozero python3-rpi.gpio \
-  iw rfkill
+  iw rfkill raspi-gpio wpasupplicant
 
 echo "==> Services stoppen für Config-Rollout"
 systemctl stop hostapd dnsmasq nginx || true
@@ -65,6 +65,7 @@ install -m 0755 "$REPO_DIR/pi-lock-videos.sh"    /usr/local/sbin/pi-lock-videos
 install -m 0755 "$REPO_DIR/pi-unlock-videos.sh"  /usr/local/sbin/pi-unlock-videos
 install -m 0755 "$REPO_DIR/gpio-switch.py"       /usr/local/sbin/gpio-switch.py
 install -m 0755 "$REPO_DIR/admin-server.py"      /usr/local/sbin/admin-server.py
+install -m 0755 "$REPO_DIR/boot-mode.sh"         /usr/local/sbin/video-token-bootmode
 
 mkdir -p /var/lib/video-token
 echo "ap" > /var/lib/video-token/mode
@@ -77,11 +78,26 @@ if [[ ! -f /etc/video-token/admin.pin ]]; then
   echo "   -> Default-PIN: 1234  (ändern: sudo nano /etc/video-token/admin.pin && sudo systemctl restart video-token-admin)"
 fi
 
+echo "==> WLAN-Client-Konfiguration (Vorlage)"
+# Vorlage nach /etc/wpa_supplicant/ kopieren, damit sie leicht editierbar ist.
+# Der Client-Modus (GPIO 27 beim Boot LOW) aktiviert sich nur, wenn die
+# Datei /etc/wpa_supplicant/wpa_supplicant-client.conf existiert.
+install -d -m 0755 /etc/wpa_supplicant
+if [[ ! -f /etc/wpa_supplicant/wpa_supplicant-client.conf.example ]]; then
+  install -m 0600 "$REPO_DIR/config/wpa_supplicant-client.conf.example" \
+    /etc/wpa_supplicant/wpa_supplicant-client.conf.example
+  echo "   -> Für Client-Modus: sudo cp /etc/wpa_supplicant/wpa_supplicant-client.conf.example \\"
+  echo "                              /etc/wpa_supplicant/wpa_supplicant-client.conf"
+  echo "      und SSID/PSK anpassen, dann GPIO 27 beim Boot gegen GND."
+fi
+
 echo "==> systemd-Units"
-install -m 0644 "$REPO_DIR/systemd/video-token-ap.service"    /etc/systemd/system/
-install -m 0644 "$REPO_DIR/systemd/video-token-gpio.service"  /etc/systemd/system/
-install -m 0644 "$REPO_DIR/systemd/video-token-admin.service" /etc/systemd/system/
+install -m 0644 "$REPO_DIR/systemd/video-token-bootmode.service" /etc/systemd/system/
+install -m 0644 "$REPO_DIR/systemd/video-token-ap.service"       /etc/systemd/system/
+install -m 0644 "$REPO_DIR/systemd/video-token-gpio.service"     /etc/systemd/system/
+install -m 0644 "$REPO_DIR/systemd/video-token-admin.service"    /etc/systemd/system/
 systemctl daemon-reload
+systemctl enable video-token-bootmode.service
 systemctl enable video-token-ap.service
 systemctl enable video-token-gpio.service  || true
 systemctl enable video-token-admin.service

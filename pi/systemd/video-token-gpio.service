@@ -1,6 +1,7 @@
 [Unit]
 Description=Guest_Video_Token GPIO-Modusschalter
 After=video-token-ap.service
+ConditionPathExists=!/run/video-token-client-mode
 
 [Service]
 Type=simple
