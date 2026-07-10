@@ -114,6 +114,11 @@ install -m 0644 "$REPO_DIR/systemd/video-token-bootmode.service" /etc/systemd/sy
 install -m 0644 "$REPO_DIR/systemd/video-token-ap.service"       /etc/systemd/system/
 install -m 0644 "$REPO_DIR/systemd/video-token-gpio.service"     /etc/systemd/system/
 install -m 0644 "$REPO_DIR/systemd/video-token-admin.service"    /etc/systemd/system/
+echo "==> dnsmasq systemd-Override (wartet auf wlan0=192.168.4.1)"
+install -d -m 0755 /etc/systemd/system/dnsmasq.service.d
+install -m 0644 "$REPO_DIR/systemd/dnsmasq.service.d/override.conf" \
+  /etc/systemd/system/dnsmasq.service.d/override.conf
+
 systemctl daemon-reload
 systemctl enable video-token-bootmode.service
 systemctl enable video-token-ap.service
