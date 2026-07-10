@@ -36,6 +36,39 @@ remove_nm_unmanaged() {
   rm -f "$NM_UNMANAGED_CONF"
 }
 
+write_nm_client_connection() {
+  local ssid="$1"
+  local psk="$2"
+  local nm_dir=/etc/NetworkManager/system-connections
+  local nm_file="$nm_dir/video-token-client.nmconnection"
+
+  [[ -z "$ssid" || ! -d /etc/NetworkManager ]] && return 0
+  install -d -m 0700 "$nm_dir"
+  cat > "$nm_file" <<EOF
+[connection]
+id=video-token-client
+uuid=8b1c1a8d-3a56-47e1-9a86-6ec1a8828c27
+type=wifi
+interface-name=wlan0
+autoconnect=true
+
+[wifi]
+mode=infrastructure
+ssid=$ssid
+
+[wifi-security]
+key-mgmt=wpa-psk
+psk=$psk
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=ignore
+EOF
+  chmod 0600 "$nm_file"
+}
+
 extract_wpa_value() {
   local key="$1"
   local file="$2"
@@ -93,6 +126,7 @@ if [[ ( "$LEVEL" == "0" || "$FORCE" == "1" ) && -n "$ACTIVE_CLIENT_CONF" ]]; the
   if command -v nmcli >/dev/null 2>&1; then
     SSID="$(extract_wpa_value ssid /etc/wpa_supplicant/wpa_supplicant.conf)"
     PSK="$(extract_wpa_value psk /etc/wpa_supplicant/wpa_supplicant.conf)"
+    write_nm_client_connection "$SSID" "$PSK"
     nmcli radio wifi on 2>/dev/null || true
     nmcli connection delete video-token-client 2>/dev/null || true
     if [[ -n "$SSID" ]]; then
@@ -116,6 +150,7 @@ else
   if command -v nmcli >/dev/null 2>&1; then
     nmcli connection down video-token-client 2>/dev/null || true
     nmcli connection delete video-token-client 2>/dev/null || true
+    rm -f /etc/NetworkManager/system-connections/video-token-client.nmconnection
   fi
   systemctl disable wpa_supplicant.service 2>/dev/null || true
 fi
