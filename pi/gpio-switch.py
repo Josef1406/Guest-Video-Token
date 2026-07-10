@@ -49,12 +49,12 @@ def on_usb():
     run("usb")
 
 def on_wp_locked():
-    # GPIO 26 offen / HIGH -> Button ist "released" (pull-up aktiv)
+    # GPIO 16 offen / HIGH -> Button ist "released" (pull-up aktiv)
     print("Write-Protect-Schalter: LOCKED (Kunden-Modus)", flush=True)
     set_ro(1)
 
 def on_wp_unlocked():
-    # GPIO 26 gegen GND -> Button ist "pressed"
+    # GPIO 16 gegen GND -> Button ist "pressed"
     print("Write-Protect-Schalter: UNLOCKED (Admin-Modus)", flush=True)
     set_ro(0)
 
