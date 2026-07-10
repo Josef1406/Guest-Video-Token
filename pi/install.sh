@@ -18,7 +18,13 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   hostapd dnsmasq nginx-light \
   exfat-fuse exfatprogs \
   python3-gpiozero python3-rpi.gpio \
-  iw rfkill raspi-gpio wpasupplicant
+  iw rfkill wpasupplicant
+
+# raspi-gpio bzw. pinctrl (je nach OS-Version) für Boot-Mode-Detection
+if ! DEBIAN_FRONTEND=noninteractive apt-get install -y raspi-gpio 2>/dev/null; then
+  echo "   raspi-gpio nicht verfügbar, versuche pinctrl (RaspiOS Bookworm/Trixie)"
+  DEBIAN_FRONTEND=noninteractive apt-get install -y pinctrl || true
+fi
 
 echo "==> Services stoppen für Config-Rollout"
 systemctl stop hostapd dnsmasq nginx || true
