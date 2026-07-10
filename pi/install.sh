@@ -46,6 +46,17 @@ if ! grep -q "# video-token" /etc/dhcpcd.conf 2>/dev/null; then
   cat "$REPO_DIR/config/dhcpcd.conf.append" >> /etc/dhcpcd.conf
 fi
 
+echo "==> NetworkManager: wlan0 im Normalbetrieb für AP freigeben"
+# Raspberry Pi OS Bookworm/Trixie nutzt häufig NetworkManager. Im AP-Modus
+# darf NetworkManager wlan0 nicht als Heimnetz-Client verwalten, sonst startet
+# dnsmasq vor/ohne AP-Interface und iPhones bekommen keine IP.
+if [[ -d /etc/NetworkManager/conf.d ]]; then
+  cat > /etc/NetworkManager/conf.d/99-video-token-wlan0-unmanaged.conf <<'EOF'
+[keyfile]
+unmanaged-devices=interface-name:wlan0
+EOF
+fi
+
 echo "==> wpa_supplicant deaktivieren (AP-only)"
 systemctl disable --now wpa_supplicant.service 2>/dev/null || true
 rfkill unblock wlan || true
@@ -86,8 +97,9 @@ fi
 
 echo "==> WLAN-Client-Konfiguration (Vorlage)"
 # Vorlage nach /etc/wpa_supplicant/ kopieren, damit sie leicht editierbar ist.
-# Der Client-Modus (GPIO 27 beim Boot LOW) aktiviert sich nur, wenn die
-# Datei /etc/wpa_supplicant/wpa_supplicant-client.conf existiert.
+# Der Client-Modus (GPIO 27 beim Boot LOW) aktiviert sich, wenn entweder
+# /etc/wpa_supplicant/wpa_supplicant-client.conf oder eine per Windows auf
+# bootfs abgelegte wpa_supplicant.conf existiert.
 install -d -m 0755 /etc/wpa_supplicant
 if [[ ! -f /etc/wpa_supplicant/wpa_supplicant-client.conf.example ]]; then
   install -m 0600 "$REPO_DIR/config/wpa_supplicant-client.conf.example" \
