@@ -80,7 +80,7 @@ def main() -> None:
     # Hinweis: Beim Boot wird derselbe Pin von boot-mode.sh gelesen und
     # entscheidet dort über Client-Modus vs. Normal-Modus.
     try:
-        wp_pin = Button(26, pull_up=True, bounce_time=0.1)
+        wp_pin = Button(27, pull_up=True, bounce_time=0.1)
         wp_pin.when_pressed  = on_wp_unlocked   # gegen GND -> Admin/beschreibbar
         wp_pin.when_released = on_wp_locked     # offen     -> Kunde/read-only
         # Startzustand anwenden
