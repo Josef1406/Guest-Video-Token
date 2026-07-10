@@ -251,7 +251,7 @@ Die Admin-Seite zeigt:
 ## Skripte
 
 | Pfad nach Install | Zweck |
-|---|---|---|
+|---|---|
 | `/usr/local/sbin/switch-mode` | `ap` / `usb [0\|1]` / `toggle` / `reapply` / `status` |
 | `/usr/local/sbin/pi-lock-videos` | Videos immutable + read-only (ext4) |
 | `/usr/local/sbin/pi-unlock-videos` | Aufheben |
