@@ -3,14 +3,13 @@
 
 Belegte GPIOs (BCM-Nummerierung, alle gegen GND, intern pull-up):
 - GPIO 17 : Taster        -> Modus umschalten (AP <-> USB)
-- GPIO  5 : Schiebeschalter Position "AP"  (optional)
-- GPIO  6 : Schiebeschalter Position "USB" (optional)
-- GPIO 27 : Doppelfunktion
-     * Beim Boot LOW -> Client-Modus (Pi verbindet sich mit Heim-WLAN,
-       siehe boot-mode.sh). Prüfung erfolgt EINMAL beim Boot.
-     * Zur Laufzeit  -> Schreibschutz-Schalter für den USB-Gadget:
-       offen / HIGH  -> ro=1  (Kunden-Modus: nur lesen)
-             gegen GND / LOW -> ro=0 (Admin-Modus: Videos aufspielen)
+- GPIO 24 : Schiebeschalter Position "AP"  (optional)
+- GPIO 25 : Schiebeschalter Position "USB" (optional)
+- GPIO 16 : Schreibschutz-Schalter für den USB-Gadget:
+       offen / HIGH   -> ro=1 (Kunden-Modus: nur lesen)
+       gegen GND / LOW -> ro=0 (Admin-Modus: Videos aufspielen)
+- GPIO 27 : Beim Boot LOW -> Client-Modus (Heim-WLAN, siehe boot-mode.sh).
+       Prüfung erfolgt EINMAL beim Boot; zur Laufzeit ungenutzt.
 """
 import subprocess
 import time
