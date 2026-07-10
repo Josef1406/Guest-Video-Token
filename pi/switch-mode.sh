@@ -1,31 +1,19 @@
 #!/usr/bin/env bash
-# switch-mode.sh ap|usb|toggle|status|reapply
-#
-# Der USB-Massenspeicher-Modus liest den Schreibschutz aus
-# /var/lib/video-token/gadget_ro (0 = beschreibbar, 1 = read-only).
-# Dieser Wert wird vom GPIO-Daemon (gpio-switch.py, GPIO 16) gepflegt.
+# switch-mode.sh – vereinfacht: nur AP-Modus.
+# (USB-Massenspeicher-Modus entfernt; Videos werden per Web-Upload verwaltet.)
 set -euo pipefail
 
 MODE_FILE=/var/lib/video-token/mode
-RO_FILE=/var/lib/video-token/gadget_ro
 mkdir -p "$(dirname "$MODE_FILE")"
-BACKING=/dev/disk/by-label/VIDEOS   # exFAT-Datenpartition
 AP_IP=192.168.4.1/24
-
-current()    { cat "$MODE_FILE" 2>/dev/null || echo "ap"; }
-current_ro() { cat "$RO_FILE"   2>/dev/null || echo "1"; }   # Default: read-only (sicher)
 
 prepare_ap_interface() {
   rfkill unblock wlan 2>/dev/null || true
   systemctl stop wpa_supplicant.service wpa_supplicant@wlan0.service 2>/dev/null || true
-
-  # Raspberry Pi OS Bookworm/Trixie nutzt oft NetworkManager statt dhcpcd.
-  # Deshalb setzen wir die AP-Adresse hier explizit, bevor dnsmasq DHCP startet.
   if command -v nmcli >/dev/null 2>&1; then
     nmcli connection down video-token-client 2>/dev/null || true
     nmcli device set wlan0 managed no 2>/dev/null || true
   fi
-
   ip link set wlan0 up 2>/dev/null || true
   ip addr flush dev wlan0 2>/dev/null || true
   ip addr replace "$AP_IP" dev wlan0
@@ -34,7 +22,6 @@ prepare_ap_interface() {
 ap_mode() {
   echo "-> AP-Modus"
   systemctl stop dnsmasq 2>/dev/null || true
-  modprobe -r g_mass_storage 2>/dev/null || true
   prepare_ap_interface
   systemctl restart hostapd
   ip addr replace "$AP_IP" dev wlan0
@@ -42,33 +29,8 @@ ap_mode() {
   echo "ap" > "$MODE_FILE"
 }
 
-usb_mode() {
-  local ro="${1:-$(current_ro)}"
-  echo "-> USB-Massenspeicher-Modus (ro=$ro)"
-  systemctl stop hostapd dnsmasq || true
-  if [[ ! -b "$BACKING" ]]; then
-    echo "FEHLER: $BACKING nicht gefunden. Label 'VIDEOS' auf exFAT-Partition?" >&2
-    exit 2
-  fi
-  umount "$BACKING" 2>/dev/null || true
-  modprobe -r g_mass_storage 2>/dev/null || true
-  modprobe g_mass_storage file="$BACKING" removable=1 ro="$ro" stall=0 iSerialNumber="videotoken"
-  echo "usb" > "$MODE_FILE"
-}
-
-# Wird vom GPIO-Daemon bei Änderung von GPIO 16 aufgerufen: nur wenn wir
-# gerade im USB-Modus sind, den Gadget mit neuem ro-Wert neu laden.
-reapply() {
-  if [[ "$(current)" == "usb" ]]; then
-    usb_mode "$(current_ro)"
-  fi
-}
-
 case "${1:-status}" in
-  ap)      ap_mode ;;
-  usb)     usb_mode "${2:-}" ;;
-  toggle)  [[ "$(current)" == "ap" ]] && usb_mode || ap_mode ;;
-  reapply) reapply ;;
-  status)  echo "mode=$(current) ro=$(current_ro)" ;;
-  *)       echo "Usage: $0 {ap|usb [0|1]|toggle|reapply|status}" >&2; exit 1 ;;
+  ap)     ap_mode ;;
+  status) echo "mode=$(cat "$MODE_FILE" 2>/dev/null || echo ap)" ;;
+  *)      echo "Usage: $0 {ap|status}" >&2; exit 1 ;;
 esac

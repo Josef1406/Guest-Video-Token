@@ -11,13 +11,18 @@
   .kpi  { font-size:2rem; font-weight:700; }
   .muted{ color:#8b949e; font-size:.9rem; }
   table { width:100%; border-collapse:collapse; }
-  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid #30363d; font-size:.95rem; }
-  .row  { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-  input[type=password]{ padding:10px; border-radius:8px; border:1px solid #30363d; background:#0d1117; color:#e6edf3; font-size:1.1rem; width:180px; }
-  button{ padding:10px 16px; border-radius:8px; border:0; background:#238636; color:#fff; font-weight:600; cursor:pointer; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid #30363d; font-size:.95rem; vertical-align:middle; }
+  .row  { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  input[type=password], input[type=text]{ padding:10px; border-radius:8px; border:1px solid #30363d; background:#0d1117; color:#e6edf3; font-size:1rem; }
+  button{ padding:8px 14px; border-radius:8px; border:0; background:#238636; color:#fff; font-weight:600; cursor:pointer; }
   button.secondary{ background:#30363d; }
+  button.danger{ background:#da3633; }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
   .bar{ height:10px; background:#30363d; border-radius:6px; overflow:hidden; }
   .bar>span{ display:block; height:100%; background:linear-gradient(90deg,#2ea043,#f0883e,#f85149); }
+  .event-block{ border:1px solid #30363d; border-radius:10px; padding:12px; margin-top:10px; }
+  .event-block h4{ margin:0 0 8px; }
+  progress{ width:100%; height:14px; }
 </style>
 </head>
 <body>
@@ -35,7 +40,7 @@
 
   <section id="dashboard" hidden>
     <div class="row">
-      <div class="muted">Aktualisiert: <span id="ts">–</span> · Modus: <strong id="mode">–</strong></div>
+      <div class="muted">Aktualisiert: <span id="ts">–</span></div>
       <button class="secondary" id="logout">Logout</button>
     </div>
 
@@ -59,19 +64,30 @@
         </div>
         <p id="lockMsg" class="muted" style="margin-top:6px;"></p>
       </div>
-      <div class="card">
-        <div class="muted">USB-Schreibschutz (GPIO 27)</div>
-        <div class="kpi"><span id="roIcon">–</span> <span id="roState">–</span></div>
-        <div class="muted" id="roDetail">Steuerung nur per Hardware-Schalter</div>
-      </div>
     </div>
 
+    <div class="card">
+      <h3>Neues Event anlegen</h3>
+      <form id="newEventForm" class="row">
+        <input id="newEventName" type="text" placeholder="event-slug (z.B. hochzeit-mueller)" style="flex:1; min-width:220px;" />
+        <button type="submit">Anlegen</button>
+      </form>
+      <p id="newEventMsg" class="muted"></p>
+    </div>
 
     <div class="card">
-      <h3>Events</h3>
-      <table><thead><tr><th>Event</th><th>Videos</th><th>Größe</th></tr></thead>
-        <tbody id="eventsBody"><tr><td colspan="3" class="muted">–</td></tr></tbody>
-      </table>
+      <h3>Videos hochladen</h3>
+      <div class="row">
+        <select id="uploadEvent" style="padding:10px; border-radius:8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; min-width:220px;"></select>
+        <input id="uploadFiles" type="file" accept="video/mp4,.mp4" multiple />
+        <button id="btnUpload">Hochladen</button>
+      </div>
+      <div id="uploadProgress" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <h3>Events &amp; Videos</h3>
+      <div id="eventsList"><p class="muted">–</p></div>
     </div>
 
     <div class="card">
@@ -91,22 +107,19 @@ const fmtBytes = b => {
   return b.toFixed(b<10?2:b<100?1:0) + " " + u[i];
 };
 
+let currentEvents = [];
+
 async function loadStatus() {
   let r;
-  try {
-    r = await fetch("/api/admin/status", {credentials:"same-origin"});
-  } catch (e) {
-    showLogin("Admin-Service nicht erreichbar: " + e.message);
-    return;
-  }
+  try { r = await fetch("/api/admin/status", {credentials:"same-origin"}); }
+  catch (e) { showLogin("Admin-Service nicht erreichbar: " + e.message); return; }
   if (r.status === 401) { showLogin(); return; }
-  if (!r.ok) { showLogin("Admin-API Fehler: HTTP " + r.status + " (läuft video-token-admin?)"); return; }
+  if (!r.ok) { showLogin("Admin-API Fehler: HTTP " + r.status); return; }
   let s;
   try { s = await r.json(); }
-  catch (e) { showLogin("Ungültige API-Antwort (kein JSON) — nginx-Proxy zu 127.0.0.1:8080 prüfen"); return; }
+  catch (e) { showLogin("Ungültige API-Antwort"); return; }
   showDash();
   document.getElementById("ts").textContent = new Date(s.timestamp*1000).toLocaleTimeString();
-  document.getElementById("mode").textContent = s.mode;
   document.getElementById("videoCount").textContent = s.video_count;
   document.getElementById("eventCount").textContent = s.events.length;
   document.getElementById("clientCount").textContent = s.clients.length;
@@ -117,35 +130,56 @@ async function loadStatus() {
   document.getElementById("diskDetail").textContent =
     `${fmtBytes(d.used)} von ${fmtBytes(d.total)} belegt · ${d.path}`;
 
-  document.getElementById("eventsBody").innerHTML = s.events.length
-    ? s.events.map(e => `<tr><td>${e.name}</td><td>${e.count}</td><td>${fmtBytes(e.bytes)}</td></tr>`).join("")
-    : `<tr><td colspan="3" class="muted">Keine Events</td></tr>`;
+  currentEvents = s.events;
+  renderEvents(s.events);
+  renderEventSelect(s.events);
 
   document.getElementById("clientsBody").innerHTML = s.clients.length
     ? s.clients.map(c => `<tr><td>${c.hostname || "–"}</td><td>${c.ip || "–"}</td><td>${c.mac}</td></tr>`).join("")
     : `<tr><td colspan="3" class="muted">Keine Geräte verbunden</td></tr>`;
 
   renderLock(s.lock);
-  renderGadgetRo(s.gadget_ro, s.mode);
 }
 
-function renderGadgetRo(g, mode) {
-  const icon = document.getElementById("roIcon");
-  const state = document.getElementById("roState");
-  const detail = document.getElementById("roDetail");
-  if (!g) { icon.textContent="ℹ️"; state.textContent="–"; detail.textContent=""; return; }
-  const desired = g.desired;
-  const active  = g.active;
-  if (desired === 1) { icon.textContent="🔒"; state.textContent="Read-only"; state.style.color="#2ea043"; }
-  else if (desired === 0) { icon.textContent="🔓"; state.textContent="Beschreibbar"; state.style.color="#f0883e"; }
-  else { icon.textContent="ℹ️"; state.textContent="unbekannt"; state.style.color="#8b949e"; }
-  let d = `Schalter (Soll): ${desired===1?"HIGH / ro=1":desired===0?"LOW / ro=0":"?"}`;
-  if (mode === "usb") d += ` · Gadget aktiv: ${active===1?"ro=1":active===0?"ro=0":"?"}`;
-  else d += " · Gadget nicht geladen (AP-Modus)";
-  if (desired !== null && active !== null && desired !== active) {
-    d += " ⚠️ Soll ≠ Ist";
-  }
-  detail.textContent = d;
+function renderEvents(events) {
+  const box = document.getElementById("eventsList");
+  if (!events.length) { box.innerHTML = '<p class="muted">Noch keine Events. Lege oben eines an.</p>'; return; }
+  box.innerHTML = events.map(e => `
+    <div class="event-block">
+      <div class="row">
+        <h4>${e.name} <span class="muted">· ${e.count} Video${e.count===1?"":"s"} · ${fmtBytes(e.bytes)}</span></h4>
+        <button class="danger" data-del-event="${encodeURIComponent(e.name)}">Event löschen</button>
+      </div>
+      ${e.videos.length ? `<table><thead><tr><th>Datei</th><th>Größe</th><th></th></tr></thead><tbody>
+        ${e.videos.map(v => `<tr>
+          <td><a href="${v.play}" target="_blank" style="color:#58a6ff">${v.name}</a></td>
+          <td>${fmtBytes(v.size)}</td>
+          <td style="text-align:right"><button class="danger" data-del-file="${encodeURIComponent(e.name)}/${encodeURIComponent(v.name)}">Löschen</button></td>
+        </tr>`).join("")}
+      </tbody></table>` : '<p class="muted">Keine Videos.</p>'}
+    </div>`).join("");
+
+  box.querySelectorAll("[data-del-file]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("Video wirklich löschen?")) return;
+    const r = await fetch("/api/admin/file/" + b.dataset.delFile, {method:"DELETE", credentials:"same-origin"});
+    if (!r.ok) alert("Fehler: " + r.status);
+    loadStatus();
+  }));
+  box.querySelectorAll("[data-del-event]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("Event komplett löschen (inkl. aller Videos)?")) return;
+    const r = await fetch("/api/admin/event/" + b.dataset.delEvent, {method:"DELETE", credentials:"same-origin"});
+    if (!r.ok) alert("Fehler: " + r.status);
+    loadStatus();
+  }));
+}
+
+function renderEventSelect(events) {
+  const sel = document.getElementById("uploadEvent");
+  const prev = sel.value;
+  sel.innerHTML = events.length
+    ? events.map(e => `<option value="${e.name}">${e.name}</option>`).join("")
+    : '<option value="">(erst Event anlegen)</option>';
+  if (prev && events.some(e=>e.name===prev)) sel.value = prev;
 }
 
 function renderLock(l) {
@@ -171,12 +205,76 @@ async function doLock(action) {
 document.getElementById("btnLock").addEventListener("click", () => doLock("lock"));
 document.getElementById("btnUnlock").addEventListener("click", () => doLock("unlock"));
 
+document.getElementById("newEventForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = document.getElementById("newEventName").value.trim();
+  const msg = document.getElementById("newEventMsg");
+  if (!name) return;
+  const r = await fetch("/api/admin/event/" + encodeURIComponent(name),
+    {method:"POST", credentials:"same-origin"});
+  const j = await r.json().catch(()=>({}));
+  msg.textContent = r.ok ? `Event „${j.name}" angelegt.` : ("Fehler: " + (j.error || r.status));
+  msg.style.color = r.ok ? "#2ea043" : "#f85149";
+  if (r.ok) document.getElementById("newEventName").value = "";
+  loadStatus();
+});
+
+function uploadOne(ev, file) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const wrap = document.createElement("div");
+    wrap.style.margin = "6px 0";
+    wrap.innerHTML = `<div class="muted">${ev} / ${file.name} <span class="p">0%</span></div><progress max="100" value="0"></progress>`;
+    document.getElementById("uploadProgress").appendChild(wrap);
+    const pText = wrap.querySelector(".p");
+    const pBar = wrap.querySelector("progress");
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const pct = (e.loaded/e.total*100).toFixed(0);
+        pBar.value = pct; pText.textContent = pct + "%";
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) { pText.textContent = "fertig"; resolve(); }
+      else { pText.textContent = "Fehler " + xhr.status; reject(new Error(xhr.responseText)); }
+    };
+    xhr.onerror = () => { pText.textContent = "Netzwerkfehler"; reject(new Error("network")); };
+    xhr.open("PUT", `/api/admin/upload/${encodeURIComponent(ev)}/${encodeURIComponent(file.name)}`);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("Content-Type", "video/mp4");
+    xhr.send(file);
+  });
+}
+
+document.getElementById("btnUpload").addEventListener("click", async () => {
+  const ev = document.getElementById("uploadEvent").value;
+  const files = [...document.getElementById("uploadFiles").files];
+  if (!ev) { alert("Bitte zuerst Event anlegen."); return; }
+  if (!files.length) { alert("Keine Datei gewählt."); return; }
+  const btn = document.getElementById("btnUpload");
+  btn.disabled = true;
+  try {
+    for (const f of files) {
+      if (!f.name.toLowerCase().endsWith(".mp4")) {
+        alert(`Übersprungen (kein .mp4): ${f.name}`); continue;
+      }
+      await uploadOne(ev, f);
+    }
+    document.getElementById("uploadFiles").value = "";
+    loadStatus();
+  } catch (e) {
+    alert("Upload-Fehler: " + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 function showLogin(err){
   document.getElementById("login").hidden=false;
   document.getElementById("dashboard").hidden=true;
   document.getElementById("loginErr").textContent = err || "";
 }
-function showDash(){  document.getElementById("login").hidden=true;  document.getElementById("dashboard").hidden=false; }
+function showDash(){ document.getElementById("login").hidden=true; document.getElementById("dashboard").hidden=false; }
 
 document.getElementById("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
@@ -196,7 +294,7 @@ document.getElementById("logout").addEventListener("click", async () => {
 });
 
 let timer=null;
-function startPolling(){ if(timer) clearInterval(timer); timer=setInterval(loadStatus, 5000); }
+function startPolling(){ if(timer) clearInterval(timer); timer=setInterval(loadStatus, 10000); }
 
 loadStatus().then(startPolling);
 </script>

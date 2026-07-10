@@ -1,21 +1,33 @@
 #!/usr/bin/env python3
 """
-Guest_Video_Token – Admin-API (PIN-geschützt)
-Läuft auf 127.0.0.1:8080, nginx proxied /api/admin/ hierher.
-Endpunkte:
-  POST /api/admin/login   {"pin": "1234"}   -> setzt Session-Cookie
-  GET  /api/admin/status                     -> JSON (nur mit Cookie)
+Guest_Video_Token – Admin- und Public-API
+Läuft auf 127.0.0.1:8080, nginx proxied /api/admin/ und /api/public/ hierher.
+
+Admin (PIN-geschützt via Cookie):
+  POST /api/admin/login              {"pin":"1234"}
+  POST /api/admin/logout
+  GET  /api/admin/status
+  POST /api/admin/lock | /unlock
+  POST /api/admin/event/<name>       Event-Verzeichnis anlegen
+  DELETE /api/admin/event/<name>     Event komplett löschen (rekursiv)
+  PUT  /api/admin/upload/<event>/<file.mp4>   Body = MP4-Bytes (streamed)
+  DELETE /api/admin/file/<event>/<file>       Einzelnes Video löschen
+
+Public (offen, read-only):
+  GET  /api/public/events            Liste aller Events + Videos
 """
-import json, os, re, subprocess, secrets, time, shutil, hmac
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import json, os, re, subprocess, secrets, time, shutil, hmac, shlex
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from http.cookies import SimpleCookie
+from urllib.parse import unquote
 
 PIN_FILE      = "/etc/video-token/admin.pin"
 MODE_FILE     = "/var/lib/video-token/mode"
-RO_FILE       = "/var/lib/video-token/gadget_ro"
 VIDEO_ROOT    = "/srv/videos"
-SESSION_TTL   = 3600  # 1h
+SESSION_TTL   = 3600
 SESSIONS: dict[str, float] = {}
+
+SAFE_NAME = re.compile(r"^[A-Za-z0-9._\- ]{1,120}$")
 
 def load_pin() -> str:
     try:
@@ -38,46 +50,47 @@ def is_authed(headers) -> bool:
     if "vt_admin" not in c: return False
     return c["vt_admin"].value in SESSIONS
 
-# --- Status-Sammler --------------------------------------------------------
+def safe_component(name: str) -> str | None:
+    """Ordner- oder Dateiname absichern: keine Slashes, keine '..'."""
+    if not name or "/" in name or "\\" in name or name in (".", ".."):
+        return None
+    if not SAFE_NAME.match(name):
+        return None
+    return name
+
+# --- Status ---------------------------------------------------------------
 
 def get_mode() -> str:
     try:
         with open(MODE_FILE) as f: return f.read().strip()
-    except Exception: return "unknown"
+    except Exception: return "ap"
 
-def get_gadget_ro():
-    """Liest den vom GPIO-Daemon gepflegten Schreibschutz-Wunsch (Datei)
-    und prüft zusätzlich, ob das aktive g_mass_storage-Modul tatsächlich
-    ro=1 geladen wurde. Rückgabe: {"desired": 0|1|None, "active": 0|1|None}."""
-    desired = None
-    try:
-        with open(RO_FILE) as f:
-            desired = int(f.read().strip() or "1")
-    except Exception:
-        pass
-    active = None
-    try:
-        # /sys/module/g_mass_storage/parameters/ro existiert nur, wenn Modul geladen
-        with open("/sys/module/g_mass_storage/parameters/ro") as f:
-            # Format z.B. "1" oder "Y" – wir normalisieren
-            v = f.read().strip().lower()
-            active = 1 if v in ("1", "y", "yes", "true") else 0
-    except FileNotFoundError:
-        active = None  # Modul nicht geladen (AP-Modus)
-    except Exception:
-        pass
-    return {"desired": desired, "active": active}
-
-def get_events():
+def list_events():
     events = []
     if not os.path.isdir(VIDEO_ROOT):
         return events
     for name in sorted(os.listdir(VIDEO_ROOT)):
         p = os.path.join(VIDEO_ROOT, name)
         if not os.path.isdir(p): continue
-        files = [f for f in os.listdir(p) if f.lower().endswith(".mp4")]
-        size  = sum(os.path.getsize(os.path.join(p, f)) for f in files if os.path.isfile(os.path.join(p, f)))
-        events.append({"name": name, "count": len(files), "bytes": size})
+        videos = []
+        try:
+            for f in sorted(os.listdir(p)):
+                fp = os.path.join(p, f)
+                if os.path.isfile(fp) and f.lower().endswith(".mp4"):
+                    videos.append({
+                        "name": f,
+                        "size": os.path.getsize(fp),
+                        "url":  f"/media/{name}/{f}",
+                        "play": f"/v/{name}/{f}",
+                    })
+        except PermissionError:
+            pass
+        events.append({
+            "name": name,
+            "count": len(videos),
+            "bytes": sum(v["size"] for v in videos),
+            "videos": videos,
+        })
     return events
 
 def get_disk():
@@ -86,9 +99,6 @@ def get_disk():
     return {"total": total, "used": used, "free": free, "path": target}
 
 def get_lock_state():
-    """Ermittelt Schreibschutz-Status der Videos.
-    Rückgabe: {"locked": bool|None, "detail": str, "fs": str}
-    """
     fs = "unknown"
     try:
         out = subprocess.check_output(
@@ -127,12 +137,9 @@ def get_lock_state():
     return {"locked": locked, "detail": " · ".join(detail), "fs": fs}
 
 _MAC_RE = re.compile(r"([0-9a-f]{2}(?::[0-9a-f]{2}){5})", re.I)
-_IP_RE  = re.compile(r"^\s*(\d+\.\d+\.\d+\.\d+)\s+([0-9a-f:]{17})", re.I | re.M)
 
 def get_clients():
-    """Verbundene WLAN-Clients (im AP-Mode via hostapd + dnsmasq leases)."""
     clients = {}
-    # hostapd assoziierte Stationen
     try:
         out = subprocess.check_output(
             ["hostapd_cli", "-i", "wlan0", "all_sta"],
@@ -143,7 +150,6 @@ def get_clients():
             clients.setdefault(mac, {"mac": mac, "ip": None, "hostname": None})
     except Exception:
         pass
-    # dnsmasq leases (IP + Hostname)
     for lease_path in ("/var/lib/misc/dnsmasq.leases", "/var/lib/dnsmasq/dnsmasq.leases"):
         try:
             with open(lease_path) as f:
@@ -159,7 +165,7 @@ def get_clients():
     return list(clients.values())
 
 def build_status():
-    events = get_events()
+    events = list_events()
     return {
         "mode":       get_mode(),
         "hostname":   os.uname().nodename,
@@ -168,12 +174,10 @@ def build_status():
         "clients":    get_clients(),
         "disk":       get_disk(),
         "lock":       get_lock_state(),
-        "gadget_ro":  get_gadget_ro(),
         "timestamp":  int(time.time()),
     }
 
-
-# --- HTTP-Handler ----------------------------------------------------------
+# --- HTTP ------------------------------------------------------------------
 
 class Handler(BaseHTTPRequestHandler):
     def _json(self, code, obj, cookie=None):
@@ -186,11 +190,14 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, fmt, *args):  # ruhiger
+    def log_message(self, fmt, *args):
         pass
 
+    # ---- POST ----
     def do_POST(self):
-        if self.path == "/api/admin/login":
+        path = self.path.split("?", 1)[0]
+
+        if path == "/api/admin/login":
             n = int(self.headers.get("Content-Length", "0") or "0")
             try: data = json.loads(self.rfile.read(n) or b"{}")
             except Exception: data = {}
@@ -202,15 +209,19 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"ok": True}, cookie=cookie)
             time.sleep(0.5)
             return self._json(401, {"ok": False, "error": "invalid pin"})
-        if self.path == "/api/admin/logout":
+
+        if path == "/api/admin/logout":
             raw = self.headers.get("Cookie", "")
-            c = SimpleCookie(); c.load(raw) if raw else None
+            c = SimpleCookie()
+            if raw: c.load(raw)
             if "vt_admin" in c: SESSIONS.pop(c["vt_admin"].value, None)
             return self._json(200, {"ok": True}, cookie="vt_admin=; Path=/; Max-Age=0")
-        if self.path in ("/api/admin/lock", "/api/admin/unlock"):
-            if not is_authed(self.headers):
-                return self._json(401, {"error": "unauthorized"})
-            script = "/usr/local/sbin/pi-lock-videos" if self.path.endswith("/lock") \
+
+        if not is_authed(self.headers):
+            return self._json(401, {"error": "unauthorized"})
+
+        if path in ("/api/admin/lock", "/api/admin/unlock"):
+            script = "/usr/local/sbin/pi-lock-videos" if path.endswith("/lock") \
                      else "/usr/local/sbin/pi-unlock-videos"
             try:
                 r = subprocess.run([script], capture_output=True, text=True, timeout=30)
@@ -221,17 +232,109 @@ class Handler(BaseHTTPRequestHandler):
                 })
             except Exception as e:
                 return self._json(500, {"ok": False, "error": str(e)})
-        self._json(404, {"error": "not found"})
 
+        # POST /api/admin/event/<name> -> Event anlegen
+        m = re.match(r"^/api/admin/event/([^/]+)$", path)
+        if m:
+            name = safe_component(unquote(m.group(1)))
+            if not name:
+                return self._json(400, {"error": "invalid event name"})
+            os.makedirs(os.path.join(VIDEO_ROOT, name), exist_ok=True)
+            return self._json(200, {"ok": True, "name": name})
+
+        return self._json(404, {"error": "not found"})
+
+    # ---- PUT ---- (Upload)
+    def do_PUT(self):
+        if not is_authed(self.headers):
+            return self._json(401, {"error": "unauthorized"})
+        m = re.match(r"^/api/admin/upload/([^/]+)/([^/]+)$", self.path)
+        if not m:
+            return self._json(404, {"error": "not found"})
+        ev = safe_component(unquote(m.group(1)))
+        fn = safe_component(unquote(m.group(2)))
+        if not ev or not fn or not fn.lower().endswith(".mp4"):
+            return self._json(400, {"error": "invalid event/filename (must end .mp4)"})
+        n = int(self.headers.get("Content-Length", "0") or "0")
+        if n <= 0:
+            return self._json(400, {"error": "empty body"})
+        # Speicherplatz-Check
+        free = shutil.disk_usage(VIDEO_ROOT).free
+        if n > free - 50 * 1024 * 1024:
+            return self._json(507, {"error": "not enough disk space"})
+        os.makedirs(os.path.join(VIDEO_ROOT, ev), exist_ok=True)
+        dst = os.path.join(VIDEO_ROOT, ev, fn)
+        tmp = dst + ".part"
+        remaining = n
+        try:
+            with open(tmp, "wb") as f:
+                while remaining > 0:
+                    chunk = self.rfile.read(min(1024 * 1024, remaining))
+                    if not chunk: break
+                    f.write(chunk)
+                    remaining -= len(chunk)
+            if remaining != 0:
+                os.remove(tmp)
+                return self._json(400, {"error": "short upload"})
+            os.replace(tmp, dst)
+            os.chmod(dst, 0o644)
+        except Exception as e:
+            try: os.remove(tmp)
+            except Exception: pass
+            return self._json(500, {"error": str(e)})
+        return self._json(200, {"ok": True, "event": ev, "file": fn, "size": n})
+
+    # ---- DELETE ----
+    def do_DELETE(self):
+        if not is_authed(self.headers):
+            return self._json(401, {"error": "unauthorized"})
+        # Datei
+        m = re.match(r"^/api/admin/file/([^/]+)/([^/]+)$", self.path)
+        if m:
+            ev = safe_component(unquote(m.group(1)))
+            fn = safe_component(unquote(m.group(2)))
+            if not ev or not fn:
+                return self._json(400, {"error": "invalid path"})
+            fp = os.path.join(VIDEO_ROOT, ev, fn)
+            if not os.path.isfile(fp):
+                return self._json(404, {"error": "not found"})
+            try:
+                # Falls immutable, aufheben
+                subprocess.run(["chattr", "-i", fp], capture_output=True, timeout=5)
+                os.remove(fp)
+            except Exception as e:
+                return self._json(500, {"error": str(e)})
+            return self._json(200, {"ok": True})
+        # Event
+        m = re.match(r"^/api/admin/event/([^/]+)$", self.path)
+        if m:
+            ev = safe_component(unquote(m.group(1)))
+            if not ev:
+                return self._json(400, {"error": "invalid event"})
+            p = os.path.join(VIDEO_ROOT, ev)
+            if not os.path.isdir(p):
+                return self._json(404, {"error": "not found"})
+            try:
+                subprocess.run(["chattr", "-R", "-i", p], capture_output=True, timeout=10)
+                shutil.rmtree(p)
+            except Exception as e:
+                return self._json(500, {"error": str(e)})
+            return self._json(200, {"ok": True})
+        return self._json(404, {"error": "not found"})
+
+    # ---- GET ----
     def do_GET(self):
         if self.path == "/api/admin/status":
             if not is_authed(self.headers):
                 return self._json(401, {"error": "unauthorized"})
             return self._json(200, build_status())
+        if self.path == "/api/public/events":
+            # Öffentlich lesbare Event-Liste für die Startseite
+            return self._json(200, {"events": list_events()})
         self._json(404, {"error": "not found"})
 
 def main():
-    HTTPServer(("127.0.0.1", 8080), Handler).serve_forever()
+    ThreadingHTTPServer(("127.0.0.1", 8080), Handler).serve_forever()
 
 if __name__ == "__main__":
     main()

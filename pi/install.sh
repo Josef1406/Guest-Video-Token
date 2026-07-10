@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Guest_Video_Token – Installer für Raspberry Pi Zero W (Raspberry Pi OS Lite)
-# Idempotent: kann mehrfach ausgeführt werden.
+# Vereinfachte AP-only-Variante mit Web-Upload (kein USB-Gadget).
 set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then
@@ -9,20 +9,15 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-BOOT_CONFIG="/boot/config.txt"
-[[ -f /boot/firmware/config.txt ]] && BOOT_CONFIG="/boot/firmware/config.txt"
 
 echo "==> Pakete installieren"
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   hostapd dnsmasq nginx-light \
-  exfat-fuse exfatprogs \
-  python3-gpiozero python3-rpi.gpio \
+  python3 \
   iw rfkill wpasupplicant
 
-# raspi-gpio bzw. pinctrl (je nach OS-Version) für Boot-Mode-Detection
 if ! DEBIAN_FRONTEND=noninteractive apt-get install -y raspi-gpio 2>/dev/null; then
-  echo "   raspi-gpio nicht verfügbar, versuche pinctrl (RaspiOS Bookworm/Trixie)"
   DEBIAN_FRONTEND=noninteractive apt-get install -y pinctrl || true
 fi
 
@@ -35,21 +30,17 @@ install -m 0644 "$REPO_DIR/config/hostapd.conf" /etc/hostapd/hostapd.conf
 sed -i 's|^#\?DAEMON_CONF=.*|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd
 
 install -m 0644 "$REPO_DIR/config/dnsmasq.conf" /etc/dnsmasq.d/video-token.conf
-# stock dnsmasq.conf nicht anfassen, wir nutzen /etc/dnsmasq.d/
 
 install -m 0644 "$REPO_DIR/config/nginx.conf" /etc/nginx/sites-available/video-token
 ln -sf /etc/nginx/sites-available/video-token /etc/nginx/sites-enabled/video-token
 rm -f /etc/nginx/sites-enabled/default
 
-echo "==> dhcpcd static IP für wlan0"
-if ! grep -q "# video-token" /etc/dhcpcd.conf 2>/dev/null; then
+echo "==> dhcpcd static IP für wlan0 (nur falls dhcpcd genutzt wird)"
+if [[ -f /etc/dhcpcd.conf ]] && ! grep -q "# video-token" /etc/dhcpcd.conf 2>/dev/null; then
   cat "$REPO_DIR/config/dhcpcd.conf.append" >> /etc/dhcpcd.conf
 fi
 
 echo "==> NetworkManager: wlan0 im Normalbetrieb für AP freigeben"
-# Raspberry Pi OS Bookworm/Trixie nutzt häufig NetworkManager. Im AP-Modus
-# darf NetworkManager wlan0 nicht als Heimnetz-Client verwalten, sonst startet
-# dnsmasq vor/ohne AP-Interface und iPhones bekommen keine IP.
 if [[ -d /etc/NetworkManager/conf.d ]]; then
   cat > /etc/NetworkManager/conf.d/99-video-token-wlan0-unmanaged.conf <<'EOF'
 [keyfile]
@@ -61,17 +52,9 @@ echo "==> wpa_supplicant deaktivieren (AP-only)"
 systemctl disable --now wpa_supplicant.service 2>/dev/null || true
 rfkill unblock wlan || true
 
-echo "==> USB-Gadget Overlay in $BOOT_CONFIG"
-if ! grep -q "^dtoverlay=dwc2" "$BOOT_CONFIG"; then
-  echo "" >> "$BOOT_CONFIG"
-  cat "$REPO_DIR/config/boot-config.append" >> "$BOOT_CONFIG"
-fi
-if ! grep -q "^dwc2$" /etc/modules; then
-  cat "$REPO_DIR/config/modules.append" >> /etc/modules
-fi
-
 echo "==> Webroot & Video-Verzeichnis"
 mkdir -p /srv/videos
+chown -R www-data:www-data /srv/videos || true
 mkdir -p /var/www/video-token
 cp -r "$REPO_DIR/../web/." /var/www/video-token/
 chown -R www-data:www-data /var/www/video-token
@@ -80,7 +63,6 @@ echo "==> Skripte nach /usr/local/sbin"
 install -m 0755 "$REPO_DIR/switch-mode.sh"       /usr/local/sbin/switch-mode
 install -m 0755 "$REPO_DIR/pi-lock-videos.sh"    /usr/local/sbin/pi-lock-videos
 install -m 0755 "$REPO_DIR/pi-unlock-videos.sh"  /usr/local/sbin/pi-unlock-videos
-install -m 0755 "$REPO_DIR/gpio-switch.py"       /usr/local/sbin/gpio-switch.py
 install -m 0755 "$REPO_DIR/admin-server.py"      /usr/local/sbin/admin-server.py
 install -m 0755 "$REPO_DIR/boot-mode.sh"         /usr/local/sbin/video-token-bootmode
 
@@ -95,36 +77,35 @@ if [[ ! -f /etc/video-token/admin.pin ]]; then
   echo "   -> Default-PIN: 1234  (ändern: sudo nano /etc/video-token/admin.pin && sudo systemctl restart video-token-admin)"
 fi
 
-echo "==> WLAN-Client-Konfiguration (Vorlage)"
-# Vorlage nach /etc/wpa_supplicant/ kopieren, damit sie leicht editierbar ist.
-# Der Client-Modus (GPIO 27 beim Boot LOW) aktiviert sich, wenn entweder
-# /etc/wpa_supplicant/wpa_supplicant-client.conf oder eine per Windows auf
-# bootfs abgelegte wpa_supplicant.conf existiert.
+# Admin-Server läuft als root (siehe systemd-Unit) und braucht daher kein sudoers.
+rm -f /etc/sudoers.d/video-token
+
+
+echo "==> WLAN-Client-Konfiguration (Vorlage, für Wartungsmodus)"
 install -d -m 0755 /etc/wpa_supplicant
 if [[ ! -f /etc/wpa_supplicant/wpa_supplicant-client.conf.example ]]; then
   install -m 0600 "$REPO_DIR/config/wpa_supplicant-client.conf.example" \
     /etc/wpa_supplicant/wpa_supplicant-client.conf.example
-  echo "   -> Für Client-Modus: sudo cp /etc/wpa_supplicant/wpa_supplicant-client.conf.example \\"
-  echo "                              /etc/wpa_supplicant/wpa_supplicant-client.conf"
-  echo "      und SSID/PSK anpassen, dann GPIO 27 beim Boot gegen GND."
 fi
 
 echo "==> systemd-Units"
 install -m 0644 "$REPO_DIR/systemd/video-token-bootmode.service" /etc/systemd/system/
 install -m 0644 "$REPO_DIR/systemd/video-token-ap.service"       /etc/systemd/system/
-install -m 0644 "$REPO_DIR/systemd/video-token-gpio.service"     /etc/systemd/system/
 install -m 0644 "$REPO_DIR/systemd/video-token-admin.service"    /etc/systemd/system/
-echo "==> dnsmasq systemd-Override (wartet auf wlan0=192.168.4.1)"
 install -d -m 0755 /etc/systemd/system/dnsmasq.service.d
 install -m 0644 "$REPO_DIR/systemd/dnsmasq.service.d/override.conf" \
   /etc/systemd/system/dnsmasq.service.d/override.conf
 
+# alte USB/GPIO-Unit ggf. entfernen
+systemctl disable --now video-token-gpio.service 2>/dev/null || true
+rm -f /etc/systemd/system/video-token-gpio.service
+
 systemctl daemon-reload
 systemctl enable video-token-bootmode.service
 systemctl enable video-token-ap.service
-systemctl enable video-token-gpio.service  || true
 systemctl enable video-token-admin.service
 
 echo
 echo "Fertig. Bitte neu starten:  sudo reboot"
 echo "SSID nach Reboot: Video_GB   |   http://192.168.4.1/"
+echo "Admin:            http://192.168.4.1/admin.html (PIN 1234)"
