@@ -15,6 +15,8 @@ zu laden oder per WhatsApp zu teilen. **Kein Internet nötig.**
 | **GPIO 27** | 13 | **Wartungs-Modus** (nur beim Boot) | LOW beim Boot = Heim-WLAN-Client |
 | GPIO 17 | 11 | *Optionaler Taster* „Modus umschalten" | Nur falls kein Schiebeschalter verwendet wird |
 
+**Schiebeschalter-Verdrahtung (3-polig):** Mittlerer Pin → **GND**, Außenpin 1 → **GPIO 24**, Außenpin 2 → **GPIO 25**.
+
 > **Wichtig:** Die internen Pull-Ups sind aktiviert. Alle Eingänge sind daher im unbeschalteten Zustand **HIGH** (offen) und werden durch Verbindung mit **GND** als aktiv erkannt.
 
 ## Betriebsmodi
