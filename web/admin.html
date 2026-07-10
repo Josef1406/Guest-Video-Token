@@ -171,7 +171,11 @@ async function doLock(action) {
 document.getElementById("btnLock").addEventListener("click", () => doLock("lock"));
 document.getElementById("btnUnlock").addEventListener("click", () => doLock("unlock"));
 
-function showLogin(){ document.getElementById("login").hidden=false; document.getElementById("dashboard").hidden=true; }
+function showLogin(err){
+  document.getElementById("login").hidden=false;
+  document.getElementById("dashboard").hidden=true;
+  document.getElementById("loginErr").textContent = err || "";
+}
 function showDash(){  document.getElementById("login").hidden=true;  document.getElementById("dashboard").hidden=false; }
 
 document.getElementById("loginForm").addEventListener("submit", async e => {
