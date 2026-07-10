@@ -77,11 +77,9 @@ if [[ ! -f /etc/video-token/admin.pin ]]; then
   echo "   -> Default-PIN: 1234  (ändern: sudo nano /etc/video-token/admin.pin && sudo systemctl restart video-token-admin)"
 fi
 
-echo "==> Sudoers: Admin-Server darf lock/unlock ausführen"
-cat > /etc/sudoers.d/video-token <<'EOF'
-www-data ALL=(root) NOPASSWD: /usr/local/sbin/pi-lock-videos, /usr/local/sbin/pi-unlock-videos
-EOF
-chmod 0440 /etc/sudoers.d/video-token
+# Admin-Server läuft als root (siehe systemd-Unit) und braucht daher kein sudoers.
+rm -f /etc/sudoers.d/video-token
+
 
 echo "==> WLAN-Client-Konfiguration (Vorlage, für Wartungsmodus)"
 install -d -m 0755 /etc/wpa_supplicant
