@@ -146,6 +146,43 @@ Vorgang:
 3. Token wieder abziehen, GPIO 27 offen/HIGH.
 4. Token an Kunden übergeben. Falls der Kunde in den USB-Modus schaltet, meldet Windows das Laufwerk als schreibgeschützt.
 
+## Wartungs-Modus (Heim-WLAN-Client, GPIO 27 beim Boot)
+
+Neben der Schreibschutz-Funktion wird GPIO 27 **einmalig beim Boot** ausgewertet.
+Damit lässt sich der Token für Wartung/Updates ins eigene Heim-WLAN holen –
+ganz ohne Bildschirm/Tastatur:
+
+| GPIO 27 beim Boot | `wpa_supplicant-client.conf` vorhanden | Ergebnis |
+|---|---|---|
+| **offen / HIGH** | egal | Normalbetrieb: AP `Video_GB` bzw. USB-Gadget (bisheriges Verhalten). GPIO 27 wirkt zur Laufzeit als Schreibschutz-Schalter. |
+| **gegen GND / LOW** | **ja** | **Client-Modus**: Pi verbindet sich mit dem konfigurierten Heim-WLAN (DHCP). AP, USB-Gadget und Admin-API bleiben aus. Zugriff per SSH / RustDesk / VNC über die vom Router vergebene IP. |
+| gegen GND / LOW | nein | Normalbetrieb (Fallback, damit der Token nie „unerreichbar" wird). |
+
+### Einrichtung (einmalig)
+
+```bash
+sudo cp /etc/wpa_supplicant/wpa_supplicant-client.conf.example \
+        /etc/wpa_supplicant/wpa_supplicant-client.conf
+sudo nano /etc/wpa_supplicant/wpa_supplicant-client.conf   # SSID + PSK
+sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant-client.conf
+```
+
+Ablauf für einen Wartungs-Zugriff:
+
+1. Pi ausschalten.
+2. GPIO 27 gegen GND legen (Schalter auf „Wartung").
+3. Pi einschalten. `video-token-bootmode.service` liest GPIO 27, aktiviert
+   `wpa_supplicant` und deaktiviert für diesen Boot AP-, USB- und Admin-Dienste.
+4. Am Router die IP des Pi ablesen, dann `ssh pi@<ip>` oder RustDesk verbinden.
+5. Nach der Wartung: Pi ausschalten, GPIO 27 wieder öffnen, Pi einschalten –
+   der Token startet wieder normal (AP/USB) und GPIO 27 fungiert wie gewohnt
+   als Schreibschutz-Schalter.
+
+> Wichtig: Ohne Datei `wpa_supplicant-client.conf` passiert bei GPIO 27 LOW
+> beim Boot **nichts** – der Token startet normal weiter. So kann man sich
+> nie versehentlich aussperren.
+
+
 ### Technische Details
 
 - `switch-mode usb` liest den Wert aus `/var/lib/video-token/gadget_ro` (default `1`).
