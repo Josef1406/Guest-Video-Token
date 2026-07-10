@@ -10,14 +10,35 @@ MODE_FILE=/var/lib/video-token/mode
 RO_FILE=/var/lib/video-token/gadget_ro
 mkdir -p "$(dirname "$MODE_FILE")"
 BACKING=/dev/disk/by-label/VIDEOS   # exFAT-Datenpartition
+AP_IP=192.168.4.1/24
 
 current()    { cat "$MODE_FILE" 2>/dev/null || echo "ap"; }
 current_ro() { cat "$RO_FILE"   2>/dev/null || echo "1"; }   # Default: read-only (sicher)
 
+prepare_ap_interface() {
+  rfkill unblock wlan 2>/dev/null || true
+  systemctl stop wpa_supplicant.service wpa_supplicant@wlan0.service 2>/dev/null || true
+
+  # Raspberry Pi OS Bookworm/Trixie nutzt oft NetworkManager statt dhcpcd.
+  # Deshalb setzen wir die AP-Adresse hier explizit, bevor dnsmasq DHCP startet.
+  if command -v nmcli >/dev/null 2>&1; then
+    nmcli connection down video-token-client 2>/dev/null || true
+    nmcli device set wlan0 managed no 2>/dev/null || true
+  fi
+
+  ip link set wlan0 up 2>/dev/null || true
+  ip addr flush dev wlan0 2>/dev/null || true
+  ip addr replace "$AP_IP" dev wlan0
+}
+
 ap_mode() {
   echo "-> AP-Modus"
+  systemctl stop dnsmasq 2>/dev/null || true
   modprobe -r g_mass_storage 2>/dev/null || true
-  systemctl start hostapd dnsmasq nginx
+  prepare_ap_interface
+  systemctl restart hostapd
+  ip addr replace "$AP_IP" dev wlan0
+  systemctl restart dnsmasq nginx
   echo "ap" > "$MODE_FILE"
 }
 
