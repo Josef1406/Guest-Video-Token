@@ -18,7 +18,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   hostapd dnsmasq nginx-light \
   exfat-fuse exfatprogs \
   python3-gpiozero python3-rpi.gpio \
-  iw rfkill
+  iw rfkill raspi-gpio wpasupplicant
 
 echo "==> Services stoppen für Config-Rollout"
 systemctl stop hostapd dnsmasq nginx || true
