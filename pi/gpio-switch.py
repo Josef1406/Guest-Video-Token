@@ -63,8 +63,8 @@ def main() -> None:
     btn.when_pressed = on_button
 
     try:
-        ap_pin = Button(5, pull_up=True, bounce_time=0.1)
-        usb_pin = Button(6, pull_up=True, bounce_time=0.1)
+        ap_pin = Button(24, pull_up=True, bounce_time=0.1)
+        usb_pin = Button(25, pull_up=True, bounce_time=0.1)
         ap_pin.when_pressed = on_ap
         usb_pin.when_pressed = on_usb
         if ap_pin.is_pressed and not usb_pin.is_pressed:
@@ -74,12 +74,10 @@ def main() -> None:
     except Exception as e:  # noqa: BLE001
         print(f"Schiebeschalter nicht verfügbar: {e}", flush=True)
 
-    # Schreibschutz-Schalter (GPIO 27). Optional: wenn Pin nicht verdrahtet,
+    # Schreibschutz-Schalter (GPIO 16). Optional: wenn Pin nicht verdrahtet,
     # bleibt der Default aus /var/lib/video-token/gadget_ro erhalten.
-    # Hinweis: Beim Boot wird derselbe Pin von boot-mode.sh gelesen und
-    # entscheidet dort über Client-Modus vs. Normal-Modus.
     try:
-        wp_pin = Button(27, pull_up=True, bounce_time=0.1)
+        wp_pin = Button(16, pull_up=True, bounce_time=0.1)
         wp_pin.when_pressed  = on_wp_unlocked   # gegen GND -> Admin/beschreibbar
         wp_pin.when_released = on_wp_locked     # offen     -> Kunde/read-only
         # Startzustand anwenden
