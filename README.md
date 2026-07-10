@@ -10,7 +10,7 @@ zu laden oder per WhatsApp zu teilen. **Kein Internet nötig.**
 | GPIO | Phys. Pin | Funktion | Logik |
 |---|---|---|---|
 | **GPIO 24** | 18 | Schiebeschalter Position **AP** | gegen GND = AP-Modus |
-| **GPIO 25** | Pin 22 | Schiebeschalter Position **USB** | anderer Außenpin des Schalters → GPIO 25 | gegen GND = USB-Modus |
+| **GPIO 25** | 22 | Schiebeschalter Position **USB** | gegen GND = USB-Modus |
 | **GPIO 16** | Pin 36 | **Schreibschutz** für USB-Gadget | Schalter gegen GND | LOW = Admin/beschreibbar, HIGH/offen = Kunde/read-only |
 | **GPIO 27** | Pin 13 | **Wartungs-Modus** (nur beim Boot ausgewertet) | Schalter gegen GND | LOW beim Boot = Heim-WLAN-Client |
 | GPIO 17 | Pin 11 | *Optionaler Taster* „Modus umschalten“ | gegen GND | Nur falls kein Schiebeschalter verwendet wird |
