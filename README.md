@@ -7,8 +7,8 @@ zu laden oder per WhatsApp zu teilen. **Kein Internet nötig.**
 
 ## GPIO-Belegung (aktuell)
 
-| GPIO | Pin | Funktion | Verdrahtung | Zustand |
-|---|---|---|---|---|
+| GPIO | Phys. Pin | Funktion | Logik |
+|---|---|---|---|
 | **GPIO 24** | Pin 18 | Schiebeschalter Position **AP** | Mittlerer Pin des Schalters → **GND**, linker/rechter Pin → GPIO 24 | gegen GND = AP-Modus |
 | **GPIO 25** | Pin 22 | Schiebeschalter Position **USB** | anderer Außenpin des Schalters → GPIO 25 | gegen GND = USB-Modus |
 | **GPIO 16** | Pin 36 | **Schreibschutz** für USB-Gadget | Schalter gegen GND | LOW = Admin/beschreibbar, HIGH/offen = Kunde/read-only |
