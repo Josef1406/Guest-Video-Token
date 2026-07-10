@@ -3,7 +3,7 @@
 #
 # Der USB-Massenspeicher-Modus liest den Schreibschutz aus
 # /var/lib/video-token/gadget_ro (0 = beschreibbar, 1 = read-only).
-# Dieser Wert wird vom GPIO-Daemon (gpio-switch.py, GPIO 26) gepflegt.
+# Dieser Wert wird vom GPIO-Daemon (gpio-switch.py, GPIO 16) gepflegt.
 set -euo pipefail
 
 MODE_FILE=/var/lib/video-token/mode
@@ -35,7 +35,7 @@ usb_mode() {
   echo "usb" > "$MODE_FILE"
 }
 
-# Wird vom GPIO-Daemon bei Änderung von GPIO 26 aufgerufen: nur wenn wir
+# Wird vom GPIO-Daemon bei Änderung von GPIO 16 aufgerufen: nur wenn wir
 # gerade im USB-Modus sind, den Gadget mit neuem ro-Wert neu laden.
 reapply() {
   if [[ "$(current)" == "usb" ]]; then

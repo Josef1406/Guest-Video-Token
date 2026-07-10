@@ -6,9 +6,9 @@
 #                -> CLIENT-Modus (Pi verbindet sich mit dem konfigurierten
 #                   Heim-WLAN, DHCP; AP/USB-Services bleiben aus).
 #   sonst        -> NORMAL-Modus (AP oder USB je nach Schiebeschalter
-#                   GPIO 5/6, wie bisher). GPIO 27 dient dann zur Laufzeit
-#                   dem gpio-switch-Daemon als Schreibschutz-Schalter für
-#                   den USB-Gadget.
+#                   GPIO 24/25, wie bisher). Der Schreibschutz-Schalter
+#                   für den USB-Gadget liegt separat auf GPIO 16 und wird
+#                   vom gpio-switch-Daemon zur Laufzeit ausgewertet.
 #
 # Muss VOR dhcpcd, hostapd, dnsmasq und den video-token-*-Services laufen.
 set -euo pipefail
