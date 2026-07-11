@@ -85,6 +85,18 @@ if [[ ! -f /etc/video-token/admin.pin ]]; then
   echo "   -> Default-PIN: 1234  (ändern: sudo nano /etc/video-token/admin.pin && sudo systemctl restart video-token-admin)"
 fi
 
+echo "==> Upload-Secret für /api/upload (Booth / Video-Gästebuch)"
+if [[ ! -s /etc/video-token/upload.secret ]]; then
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 32 > /etc/video-token/upload.secret
+  else
+    head -c 48 /dev/urandom | od -An -tx1 | tr -d ' \n' > /etc/video-token/upload.secret
+  fi
+  echo "   -> neu generiert: sudo cat /etc/video-token/upload.secret"
+fi
+chown root:www-data /etc/video-token/upload.secret 2>/dev/null || true
+chmod 0640 /etc/video-token/upload.secret
+
 # Admin-Server läuft als root (siehe systemd-Unit) und braucht daher kein sudoers.
 rm -f /etc/sudoers.d/video-token
 
