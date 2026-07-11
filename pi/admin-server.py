@@ -16,16 +16,18 @@ Admin (PIN-geschützt via Cookie):
 Public (offen, read-only):
   GET  /api/public/events            Liste aller Events + Videos
 """
-import json, os, re, subprocess, secrets, time, shutil, hmac, shlex
+import json, os, re, subprocess, secrets, time, shutil, hmac, shlex, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from http.cookies import SimpleCookie
-from urllib.parse import unquote
+from urllib.parse import unquote, parse_qs, urlparse
 
 PIN_FILE      = "/etc/video-token/admin.pin"
 MODE_FILE     = "/var/lib/video-token/mode"
 VIDEO_ROOT    = "/srv/videos"
+UPLOAD_TMP    = "/var/lib/video-token/uploads"
 SESSION_TTL   = 3600
 SESSIONS: dict[str, float] = {}
+os.makedirs(UPLOAD_TMP, exist_ok=True)
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._\- ]{1,120}$")
 
