@@ -130,7 +130,9 @@ FORCE=0
 
 if [[ ( "$LEVEL" == "0" || "$FORCE" == "1" ) && -n "$ACTIVE_CLIENT_CONF" ]]; then
   echo "boot-mode: CLIENT (Heim-WLAN)"
+  set_led client
   : > "$MARKER"
+
   remove_nm_unmanaged
 
   # AP-Static-IP-Block in dhcpcd.conf deaktivieren (Marker #vt-ap#).
