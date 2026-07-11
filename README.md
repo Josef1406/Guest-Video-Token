@@ -21,12 +21,12 @@ alles Weitere läuft über die Admin-Web-UI.
 |---|---|---|---|
 | **GPIO 27** | 13 | **Wartungs-Modus** (nur beim Boot) | LOW beim Boot = Heim-WLAN-Client |
 | **GPIO 23** | 16 | Duo-LED Pol A (via ~330 Ω) | HIGH im Wartungs-Modus |
-| **GPIO 24** | 18 | Duo-LED Pol B                | HIGH im AP-Modus |
+| **GPIO 16** | 36 | Duo-LED Pol B                | HIGH im AP-Modus |
 
-**Duo-LED (2-polig, antiparallel):** zwischen GPIO 23 (Pin 16) und GPIO 24 (Pin 18)
+**Duo-LED (2-polig, antiparallel):** zwischen GPIO 23 (Pin 16) und GPIO 16 (Pin 36)
 mit einem ~330 Ω Vorwiderstand in Reihe. Farbe je nach Stromrichtung:
-- **AP-Modus:** GPIO23=LOW, GPIO24=HIGH → z.B. rot
-- **Wartungs-Modus:** GPIO23=HIGH, GPIO24=LOW → z.B. grün
+- **AP-Modus:** GPIO23=LOW, GPIO16=HIGH → z.B. rot
+- **Wartungs-Modus:** GPIO23=HIGH, GPIO16=LOW → z.B. grün
 
 Alle anderen GPIO-Rollen (Modus-Schalter, USB-Read-Only) sind entfallen.
 
