@@ -86,6 +86,30 @@
     </div>
 
     <div class="card">
+      <h3>ZIP-Datei hochladen (ganzes Event)</h3>
+      <div class="row">
+        <input id="zipFile" type="file" accept=".zip,application/zip" />
+        <button id="btnZipUpload">ZIP hochladen</button>
+      </div>
+      <div id="zipProgress" style="margin-top:10px;"></div>
+      <div id="zipPreview" hidden style="margin-top:12px; padding:12px; border:1px solid #30363d; border-radius:8px; background:#0d1117;">
+        <p class="muted" id="zipInfo"></p>
+        <div class="row" style="margin:8px 0;">
+          <label style="flex:1; min-width:200px;">
+            <div class="muted" style="margin-bottom:4px;">Event-Name (wird angelegt oder ergänzt):</div>
+            <input id="zipEventName" type="text" style="width:100%;" />
+          </label>
+        </div>
+        <ul id="zipEntries" style="max-height:200px; overflow:auto; margin:8px 0; padding-left:20px; font-size:.9rem;"></ul>
+        <div class="row">
+          <button id="btnZipExtract">Als Event extrahieren</button>
+          <button id="btnZipDiscard" class="secondary">Verwerfen</button>
+        </div>
+        <p id="zipMsg" class="muted"></p>
+      </div>
+    </div>
+
+    <div class="card">
       <h3>Events &amp; Videos</h3>
       <div id="eventsList"><p class="muted">–</p></div>
     </div>
