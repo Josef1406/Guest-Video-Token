@@ -243,6 +243,102 @@ class Handler(BaseHTTPRequestHandler):
             if hmac.compare_digest(pin, load_pin()):
                 tok = secrets.token_urlsafe(24)
                 SESSIONS[tok] = time.time() + SESSION_TTL
+    # ---- POST ----
+    def do_POST(self):
+        path = self.path.split("?", 1)[0]
+
+        # -----------------------------------------------------------
+        # /api/upload  – Multipart, per X-Upload-Secret authentifiziert.
+        # Nutzung z.B. vom Video-Gästebuch (Booth) aus.
+        #   Header:   X-Upload-Secret: <secret>   (oder Authorization: Bearer <secret>)
+        #   Body:     multipart/form-data
+        #             Felder: event=<Name>, [filename=<Datei.mp4>]
+        #             File-Field: "file" mit MP4-Body
+        # Streamt nach /srv/videos/.uploads-tmp/<tok>.part, dann rename
+        # nach /srv/videos/<ev>/<fn>.mp4.
+        # -----------------------------------------------------------
+        if path == "/api/upload":
+            if not check_upload_secret(self.headers):
+                time.sleep(0.3)
+                return self._json(401, {"error": "invalid or missing upload secret"})
+            ctype = self.headers.get("Content-Type", "")
+            bm = re.search(r'boundary=([^\s;]+)', ctype)
+            if not bm or "multipart/form-data" not in ctype.lower():
+                return self._json(400, {"error": "multipart/form-data required"})
+            boundary = bm.group(1).strip('"')
+            n = int(self.headers.get("Content-Length", "0") or "0")
+            if n <= 0:
+                return self._json(400, {"error": "empty body"})
+            free = shutil.disk_usage(VIDEO_ROOT).free
+            if n > free - 50 * 1024 * 1024:
+                return self._json(507, {"error": "not enough disk space"})
+            tmp_dir = os.path.join(VIDEO_ROOT, ".uploads-tmp")
+            os.makedirs(tmp_dir, exist_ok=True)
+            try:
+                fields, file_info = stream_multipart(self.rfile, n, boundary, tmp_dir)
+            except Exception as e:
+                return self._json(400, {"error": f"multipart parse: {e}"})
+            if not file_info:
+                return self._json(400, {"error": "no file part"})
+            qs = parse_qs(urlparse(self.path).query)
+            ev_raw = (fields.get("event") or (qs.get("event", [""])[0]) or "").strip()
+            fn_raw = (fields.get("filename") or (qs.get("filename", [""])[0])
+                      or file_info.get("filename") or "").strip()
+            ev = slug_event(ev_raw)
+            fn = safe_component(os.path.basename(fn_raw)) if fn_raw else None
+            if not ev:
+                try: os.remove(file_info["path"])
+                except Exception: pass
+                return self._json(400, {"error": "invalid or missing event"})
+            if not fn or not fn.lower().endswith(".mp4"):
+                try: os.remove(file_info["path"])
+                except Exception: pass
+                return self._json(400, {"error": "invalid filename (must end .mp4)"})
+            dst_dir = os.path.join(VIDEO_ROOT, ev)
+            os.makedirs(dst_dir, exist_ok=True)
+            dst = os.path.join(dst_dir, fn)
+            try:
+                os.replace(file_info["path"], dst)
+                os.chmod(dst, 0o664)
+            except Exception as e:
+                try: os.remove(file_info["path"])
+                except Exception: pass
+                return self._json(500, {"error": str(e)})
+            return self._json(200, {
+                "ok": True, "event": ev, "file": fn, "size": file_info["size"],
+                "url":  f"/media/{ev}/{fn}",
+                "play": f"/v/{ev}/{fn}",
+            })
+
+        # -----------------------------------------------------------
+        # /api/events  – idempotentes mkdir /srv/videos/<slug>/
+        #   Header: X-Upload-Secret: <secret>
+        #   Body:   {"event": "Hochzeit Helga & Bernd"}
+        # -----------------------------------------------------------
+        if path == "/api/events":
+            if not check_upload_secret(self.headers):
+                time.sleep(0.3)
+                return self._json(401, {"error": "invalid or missing upload secret"})
+            n = int(self.headers.get("Content-Length", "0") or "0")
+            try: data = json.loads(self.rfile.read(n) or b"{}")
+            except Exception: data = {}
+            ev = slug_event(str(data.get("event") or data.get("name") or ""))
+            if not ev:
+                return self._json(400, {"error": "invalid or missing event"})
+            p = os.path.join(VIDEO_ROOT, ev)
+            existed = os.path.isdir(p)
+            os.makedirs(p, exist_ok=True)
+            return self._json(200, {"ok": True, "event": ev,
+                                    "created": not existed, "path": p})
+
+        if path == "/api/admin/login":
+            n = int(self.headers.get("Content-Length", "0") or "0")
+            try: data = json.loads(self.rfile.read(n) or b"{}")
+            except Exception: data = {}
+            pin = str(data.get("pin", ""))
+            if hmac.compare_digest(pin, load_pin()):
+                tok = secrets.token_urlsafe(24)
+                SESSIONS[tok] = time.time() + SESSION_TTL
                 cookie = f"vt_admin={tok}; Path=/; HttpOnly; SameSite=Strict; Max-Age={SESSION_TTL}"
                 return self._json(200, {"ok": True}, cookie=cookie)
             time.sleep(0.5)
