@@ -73,6 +73,35 @@ extract_wpa_value() {
   sed -nE "s/^[[:space:]]*${key}=\"(.*)\"[[:space:]]*$/\1/p" "$file" | head -n1
 }
 
+# Duo-LED (2-polig, antiparallel) an GPIO 23 (Pin 16) und GPIO 24 (Pin 18)
+# mit ~330 Ohm Vorwiderstand in Reihe.
+#   Wartungsmodus (Client): GPIO23=HIGH, GPIO24=LOW  -> Farbe A (z.B. gruen)
+#   AP-Modus (Normal):      GPIO23=LOW,  GPIO24=HIGH -> Farbe B (z.B. rot)
+LED_A=23
+LED_B=24
+set_led() {
+  # $1 = state: "client" | "ap" | "off"
+  local a=0 b=0
+  case "$1" in
+    client) a=1; b=0 ;;
+    ap)     a=0; b=1 ;;
+    *)      a=0; b=0 ;;
+  esac
+  if command -v raspi-gpio >/dev/null 2>&1; then
+    raspi-gpio set "$LED_A" op dl >/dev/null 2>&1 || true
+    raspi-gpio set "$LED_B" op dl >/dev/null 2>&1 || true
+    [[ "$a" == "1" ]] && raspi-gpio set "$LED_A" dh >/dev/null 2>&1 || raspi-gpio set "$LED_A" dl >/dev/null 2>&1
+    [[ "$b" == "1" ]] && raspi-gpio set "$LED_B" dh >/dev/null 2>&1 || raspi-gpio set "$LED_B" dl >/dev/null 2>&1
+  elif command -v pinctrl >/dev/null 2>&1; then
+    pinctrl set "$LED_A" op >/dev/null 2>&1 || true
+    pinctrl set "$LED_B" op >/dev/null 2>&1 || true
+    [[ "$a" == "1" ]] && pinctrl set "$LED_A" dh >/dev/null 2>&1 || pinctrl set "$LED_A" dl >/dev/null 2>&1
+    [[ "$b" == "1" ]] && pinctrl set "$LED_B" dh >/dev/null 2>&1 || pinctrl set "$LED_B" dl >/dev/null 2>&1
+  fi
+}
+
+
+
 # Pin als Eingang mit Pull-Up konfigurieren und Pegel lesen.
 LEVEL=1
 if command -v raspi-gpio >/dev/null 2>&1; then
