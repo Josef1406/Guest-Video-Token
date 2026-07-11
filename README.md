@@ -1,54 +1,88 @@
 # Guest_Video_Token
 
 Offline-Video-Token auf **Raspberry Pi Zero W**. Gäste einer Veranstaltung
-verbinden sich mit einem offenen WLAN und öffnen dort ihre Videos zum Ansehen
-oder Herunterladen (WhatsApp / Fotos). **Kein Internet nötig.**
-Videos werden vom Admin bequem über das Web-Admin-Interface hochgeladen.
+verbinden sich mit einem offenen WLAN und öffnen dort ihre Videos zum Ansehen,
+Herunterladen oder Teilen (WhatsApp / Fotos). **Kein Internet nötig.**
+Videos werden vom Admin bequem über das Web-Admin-Interface hochgeladen —
+einzeln, mehrere MP4s parallel oder als ZIP mit einem ganzen Event.
+
+---
+
+## Inhaltsverzeichnis
+
+- [Betriebsmodi](#betriebsmodi)
+- [Hardware / GPIO](#hardware--gpio)
+- [SD-Karte flashen](#sd-karte-flashen-einziger-setup-schritt)
+- [Installation (ein Befehl)](#installation-ein-befehl)
+- [Gäste-Ansicht](#gäste-ansicht)
+- [Admin-Web-UI](#admin-web-ui)
+- [Wartungs-Modus](#wartungs-modus-heim-wlan-gpio-27)
+- [Dateien direkt kopieren (WinSCP / scp)](#dateien-direkt-kopieren-winscp--scp)
+- [LED manuell testen](#led-manuell-testen)
+- [Services & Skripte](#services--skripte)
+- [Integration mit Video-Gästebuch](#integration-mit-video-gästebuch)
+- [Troubleshooting](#troubleshooting)
+
+---
 
 ## Betriebsmodi
 
 | Modus | Wann | Zweck |
 |---|---|---|
 | **AP** (Default) | Immer beim normalen Boot | Offenes WLAN `Video_GB` auf `192.168.4.1`, Gäste sehen ihre Videos, Admin lädt neue hoch |
-| **Wartung** | GPIO 27 → GND beim Boot | Pi verbindet sich mit deinem Heim-WLAN → SSH / RustDesk / VNC |
+| **Wartung** | GPIO 27 → GND beim Boot | Pi verbindet sich mit deinem Heim-WLAN → SSH / RustDesk / VNC / WinSCP |
 
-Kein USB-Massenspeicher-Modus, kein Schiebeschalter für Modus-Umschaltung —
-alles Weitere läuft über die Admin-Web-UI.
+Kein USB-Massenspeicher-Modus, kein Schiebeschalter — alles läuft entweder
+über die Admin-Web-UI (AP) oder über SSH/WinSCP im Heim-WLAN (Wartung).
 
-## GPIO
+---
+
+## Hardware / GPIO
+
+Benötigt: **Raspberry Pi Zero W**, SD-Karte (≥ 16 GB), Micro-USB-Netzteil,
+optional Duo-LED + Vorwiderstand, optional Jumper/Taster für GPIO 27.
 
 | GPIO | Phys. Pin | Funktion | Logik |
 |---|---|---|---|
-| **GPIO 27** | 13 | **Wartungs-Modus** (nur beim Boot) | LOW beim Boot = Heim-WLAN-Client |
+| **GPIO 27** | 13 | **Wartungs-Modus** (nur beim Boot ausgewertet) | LOW beim Boot = Heim-WLAN-Client |
 | **GPIO 23** | 16 | Duo-LED Pol A (via ~330 Ω) | HIGH im Wartungs-Modus |
 | **GPIO 16** | 36 | Duo-LED Pol B                | HIGH im AP-Modus |
+| GND         | 14 | Masse für GPIO 27 Brücke | — |
 
-**Duo-LED (2-polig, antiparallel):** zwischen GPIO 23 (Pin 16) und GPIO 16 (Pin 36)
-mit einem ~330 Ω Vorwiderstand in Reihe. Farbe je nach Stromrichtung:
-- **AP-Modus:** GPIO23=LOW, GPIO16=HIGH → z.B. rot
-- **Wartungs-Modus:** GPIO23=HIGH, GPIO16=LOW → z.B. grün
+**Duo-LED (2-polig, antiparallel):** zwischen GPIO 23 (Pin 16) und GPIO 16
+(Pin 36) mit ~330 Ω in Reihe. Farbe hängt von der Stromrichtung ab:
 
-Alle anderen GPIO-Rollen (Modus-Schalter, USB-Read-Only) sind entfallen.
+- **AP-Modus:**       GPIO23 = LOW,  GPIO16 = HIGH → z. B. rot
+- **Wartungs-Modus:** GPIO23 = HIGH, GPIO16 = LOW  → z. B. grün
+- **Aus:**            beide LOW
+
+Falls die Farben vertauscht sind: LED umdrehen oder in `pi/boot-mode.sh` die
+Zuweisungen `ap` / `client` tauschen.
+
+---
 
 ## SD-Karte flashen (einziger Setup-Schritt)
 
 Mit dem **Raspberry Pi Imager** (Windows/Mac/Linux):
 
-1. **OS wählen:** *Raspberry Pi OS Lite (32-bit)* – „Legacy" ist ok, Bookworm ebenso.
-2. **Speicher:** deine SD-Karte (≥ 16 GB, für viele Videos mehr).
-3. **⚙️ Zahnrad-Symbol (Erweitert)** anklicken und eintragen:
+1. **OS wählen:** *Raspberry Pi OS Lite (32-bit)* – Bookworm empfohlen.
+2. **Speicher:** deine SD-Karte (≥ 16 GB, mehr für viele Videos).
+3. **⚙️ Zahnrad-Symbol (Erweitert)** — hier alles Wichtige eintragen:
    - **Hostname:** z. B. `videotoken`
    - **SSH aktivieren:** Passwort-Auth, Benutzer `pi` + Passwort setzen
-   - **WLAN konfigurieren:** deine **Heim-WLAN-SSID + Passwort** (Land `DE`)
-     – wird für die **einmalige Installation** und für spätere Wartung genutzt.
-4. **Schreiben.** Danach SD-Karte in den Pi, einschalten, ~2 Minuten warten.
+   - **WLAN konfigurieren:** deine **Heim-WLAN-SSID + Passwort** (Land `AT`/`DE`)
+     — dient für die einmalige Installation und für spätere Wartung.
+4. **Schreiben.** SD-Karte in den Pi, einschalten, ~2 Minuten warten.
 
-Keine Partitionierung, kein GParted, kein manuelles Mounten nötig.
-Videos landen später einfach unter `/srv/videos` auf der Root-Partition.
+Keine Partitionierung, kein GParted, kein Mounten. Videos landen später einfach
+unter `/srv/videos` auf der Root-Partition.
+
+---
 
 ## Installation (ein Befehl)
 
-Pi mit deinem Heim-WLAN gestartet, IP am Router ablesen, dann per SSH:
+Nach dem ersten Boot ist der Pi im **Heim-WLAN** (weil im Imager konfiguriert).
+IP am Router ablesen, dann per SSH:
 
 ```bash
 ssh pi@<ip-des-pi>
@@ -56,43 +90,29 @@ curl -fsSL https://raw.githubusercontent.com/Josef1406/Guest-Video-Token/main/pi
 sudo reboot
 ```
 
-Das Bootstrap-Skript installiert `git`, klont das Repo nach `/opt/guest-video-token`,
-übernimmt deine Heim-WLAN-Zugangsdaten aus dem Imager-Setup automatisch als
-Wartungs-Config und startet den Installer.
+Das Bootstrap-Skript:
 
-Nach dem Reboot:
+- installiert `git`, klont das Repo nach `/opt/guest-video-token`
+- übernimmt die Heim-WLAN-Zugangsdaten aus dem Imager als
+  `/etc/wpa_supplicant/wpa_supplicant-client.conf` (Wartungs-Config)
+- ruft `pi/install.sh` auf: Pakete, nginx, hostapd, dnsmasq, Admin-API,
+  systemd-Units, Rechte auf `/srv/videos` (Gruppe `videos`, `pi` + `www-data`)
 
-- Gäste-WLAN: **`Video_GB`** (offen)
-- Startseite: `http://192.168.4.1/`
-- Admin:     `http://192.168.4.1/admin.html` (Standard-PIN `1234`)
+Nach dem Reboot ist der Pi im AP-Modus:
 
-Für spätere Wartung: GPIO 27 → GND beim Boot brücken → Pi geht wieder ins Heim-WLAN
-(siehe Abschnitt „Wartungs-Modus" unten).
+- Gäste-WLAN: **`Video_GB`** (offen, kein Passwort)
+- Pi-IP:      `192.168.4.1`
+- Admin-UI:   `http://192.168.4.1/admin.html`  — Standard-PIN **`1234`**
 
+Später im Heim-WLAN wartbar: GPIO 27 (Pin 13) beim Boot gegen GND (Pin 14)
+brücken. Siehe [Wartungs-Modus](#wartungs-modus-heim-wlan-gpio-27).
 
-## Videos verwalten (Admin)
-
-1. Mit dem WLAN `Video_GB` verbinden.
-2. `http://192.168.4.1/admin.html` öffnen, PIN eingeben.
-3. **Event anlegen** (z. B. `hochzeit-mueller`).
-4. **Videos hochladen** (mehrere MP4 gleichzeitig möglich, mit Fortschrittsbalken).
-5. Optional **🔒 Schützen**: setzt die Dateien read-only (ext4 `chmod 0444` +
-   `chattr +i`), damit auch versehentliche Änderungen ausgeschlossen sind.
-
-Löschen (Datei oder ganzes Event) geht nur aus der Admin-UI. Gäste haben nur
-Leserechte via nginx — sie können nichts löschen.
-
-**PIN ändern:**
-```bash
-sudo nano /etc/video-token/admin.pin
-sudo systemctl restart video-token-admin
-```
+---
 
 ## Gäste-Ansicht
 
-Startseite `/` listet alle Events mit ihren Videos auf. Klick auf ein Video
-öffnet die Player-Seite (`/v/<event>/<file>.mp4`) mit Download- und
-WhatsApp-Button.
+Die Startseite (`/`) zeigt bewusst **nur einen Hinweis**, den QR-Code des
+eigenen Videos zu scannen — keine Liste, keine Übersicht anderer Gäste.
 
 ### QR-Code-URL-Schema (kompatibel zum Video-Gästebuch)
 
@@ -100,37 +120,142 @@ WhatsApp-Button.
 http://192.168.4.1/v/<event-slug>/<event-slug>_TT_MM_JJJJ_HH_MM_SS_PIN.mp4
 ```
 
-`?raw=1` liefert direkt die MP4-Datei (für externe Player/Downloader).
+Auf der Player-Seite (`v.html`) hat der Gast:
+
+- **Abspielen** — HTML5-Player mit Range-Support (iOS-Seek funktioniert)
+- **Download** — MP4 direkt aufs Handy (WhatsApp / Fotos-App)
+- **Teilen** — Web Share API (teilt bei Unterstützung die Datei selbst,
+  auch offline); Fallback auf `wa.me`-Link
+- **Kein Delete** — Gäste haben nur Leserechte
+
+Anhang `?raw=1` liefert direkt die MP4-Datei (für externe Downloader).
+
+---
+
+## Admin-Web-UI
+
+Erreichbar unter `http://192.168.4.1/admin.html` (nach Verbindung mit `Video_GB`).
+
+- **Login** per PIN (Standard `1234`), Session-Cookie
+- **Events** anlegen, umbenennen, löschen
+- **Videos hochladen** — mehrere MP4s parallel, Streaming-Upload mit Fortschrittsbalken
+- **ZIP-Upload** — komplette Event-ZIP hochladen, danach Vorschau der enthaltenen
+  MP4s und „Als Event extrahieren" mit frei wählbarem Event-Namen
+- **🔒 Schützen** — `chmod 0444` + `chattr +i` auf alle Dateien eines Events
+- **🔓 Freigeben** — Sperre aufheben
+- **Löschen** — einzelne Datei oder ganzes Event
+
+**PIN ändern:**
+
+```bash
+sudo nano /etc/video-token/admin.pin
+sudo systemctl restart video-token-admin
+```
+
+---
 
 ## Wartungs-Modus (Heim-WLAN, GPIO 27)
 
-Wenn du beim Flashen im Imager schon dein Heim-WLAN eingetragen hast, hat das
-`bootstrap.sh` diese Zugangsdaten bereits nach
-`/etc/wpa_supplicant/wpa_supplicant-client.conf` übernommen — du musst nichts
-mehr manuell konfigurieren.
+Wenn du beim Flashen im Imager schon dein Heim-WLAN eingetragen hast, hat
+`bootstrap.sh` die Zugangsdaten bereits nach
+`/etc/wpa_supplicant/wpa_supplicant-client.conf` übernommen.
 
-Falls doch: einmalig anlegen:
+Falls die Datei fehlt (siehe `ls /etc/wpa_supplicant/wpa_supplicant-client.conf`),
+einmalig anlegen:
 
 ```bash
-sudo cp /etc/wpa_supplicant/wpa_supplicant-client.conf.example \
-        /etc/wpa_supplicant/wpa_supplicant-client.conf
-sudo nano /etc/wpa_supplicant/wpa_supplicant-client.conf   # SSID + PSK
+sudo tee /etc/wpa_supplicant/wpa_supplicant-client.conf > /dev/null <<'EOF'
+country=AT
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+
+network={
+    ssid="DEIN_HEIM_WLAN"
+    psk="DEIN_WLAN_PASSWORT"
+    key_mgmt=WPA-PSK
+}
+EOF
 sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant-client.conf
 ```
 
-
-Nutzung:
+**Nutzung:**
 
 1. Pi ausschalten.
-2. GPIO 27 (Pin 13) gegen GND (Pin 14) brücken.
-3. Pi einschalten. Statt AP verbindet er sich ins Heim-WLAN.
-4. IP am Router ablesen, `ssh pi@<ip>`.
-5. Nach der Wartung Brücke entfernen und neu booten → wieder normal.
+2. **GPIO 27 (Pin 13)** gegen **GND (Pin 14)** brücken.
+3. Pi einschalten. Statt AP verbindet er sich ins Heim-WLAN. LED wechselt Farbe.
+4. IP am Router ablesen → `ssh pi@<ip>` oder WinSCP.
+5. Nach der Wartung Brücke entfernen und neu booten → wieder AP.
 
-**Recovery ohne SSH:** Windows-PC, SD-Karte auf Boot-Partition eine
+**Recovery ohne SSH:** SD-Karte in einen PC, auf der Boot-Partition eine
 `wpa_supplicant.conf` mit deinem Heim-WLAN ablegen und eine leere Datei
-`video-token-client-mode`. Beim nächsten Boot mit GPIO 27 → GND geht der
-Pi in den Wartungsmodus.
+`video-token-client-mode` daneben. Beim nächsten Boot mit GPIO 27 → GND
+geht der Pi in den Wartungs-Modus.
+
+---
+
+## Dateien direkt kopieren (WinSCP / scp)
+
+Der User `pi` gehört zur Gruppe `videos` und darf direkt in `/srv/videos/`
+schreiben (setgid, `chmod 2775`, neue Dateien erben die Gruppe).
+
+- **Im Wartungs-Modus:** Heim-WLAN-IP verwenden (bequem, volle LAN-Geschwindigkeit).
+- **Im AP-Modus:** PC mit `Video_GB` verbinden, WinSCP/scp auf `192.168.4.1`,
+  Benutzer `pi`. Langsamer (Pi-Zero-WLAN), aber funktioniert.
+
+```bash
+scp -r ./Hochzeit2024 pi@192.168.4.1:/srv/videos/
+```
+
+---
+
+## LED manuell testen
+
+```bash
+# AP-Farbe (z. B. rot)
+sudo pinctrl set 23 op dl && sudo pinctrl set 16 op dh
+
+# Wartungs-Farbe (z. B. grün)
+sudo pinctrl set 23 op dh && sudo pinctrl set 16 op dl
+
+# Aus
+sudo pinctrl set 23 op dl && sudo pinctrl set 16 op dl
+```
+
+---
+
+## Services & Skripte
+
+| Unit | Zweck |
+|---|---|
+| `video-token-bootmode.service` | Liest GPIO 27 beim Boot, setzt Client- oder AP-Modus |
+| `video-token-ap.service`       | Startet AP + nginx |
+| `video-token-admin.service`    | Admin-API auf `127.0.0.1:8080` (nginx proxied `/api/admin/`) |
+| `hostapd`, `dnsmasq`, `nginx`  | Standard-Systemdienste |
+
+| Pfad | Zweck |
+|---|---|
+| `/usr/local/sbin/switch-mode`         | `ap` / `status` |
+| `/usr/local/sbin/video-token-bootmode`| Boot-Modus-Erkennung + LED |
+| `/usr/local/sbin/admin-server.py`     | Admin-API (Python) |
+| `/usr/local/sbin/pi-lock-videos`      | `chmod 0444` + `chattr +i` auf `/srv/videos` |
+| `/usr/local/sbin/pi-unlock-videos`    | Aufheben |
+| `/srv/videos/`                        | Event-Ordner mit MP4-Dateien |
+| `/var/www/video-token/`               | Statische Web-UI (nginx-Root) |
+| `/etc/video-token/admin.pin`          | Admin-PIN |
+| `/var/lib/video-token/uploads/`       | Temporäre ZIP-Uploads |
+
+**Repo updaten und ausrollen:**
+
+```bash
+cd /opt/guest-video-token && sudo git pull
+sudo bash pi/install.sh          # Configs + Skripte neu ausrollen
+# oder gezielt nur einzelne Teile:
+sudo install -m 0755 pi/admin-server.py /usr/local/sbin/admin-server.py
+sudo cp -r web/. /var/www/video-token/
+sudo systemctl restart video-token-admin nginx
+```
+
+---
 
 ## Integration mit Video-Gästebuch
 
@@ -153,27 +278,36 @@ wird pro Event entschieden, ob QR-Codes für Cloud oder Token generiert werden:
 
 Am Token selbst muss nichts angepasst werden.
 
-## Services (nach Install)
+---
 
-| Unit | Zweck |
-|---|---|
-| `video-token-bootmode.service` | GPIO 27 beim Boot lesen, Client- oder AP-Modus setzen |
-| `video-token-ap.service`       | AP + nginx starten |
-| `video-token-admin.service`    | Admin-API (127.0.0.1:8080), von nginx geproxied |
-| `hostapd`, `dnsmasq`, `nginx`  | Standard-Systemdienste |
+## Troubleshooting
 
-## Skripte
+**iPhone springt nach dem Verbinden mit `Video_GB` zurück ins Heimnetz.**
+→ Captive-Portal-Fix in `pi/config/nginx.conf` sorgt für `200 OK` auf allen
+iOS/Android/Windows-Probes. Falls trotzdem: Portal-Sheet einmal bestätigen
+(„Verbunden bleiben"), oder im WLAN-Info auf ⓘ → „Auto-Verbinden" für `Video_GB`
+aktivieren.
 
-| Pfad | Zweck |
-|---|---|
-| `/usr/local/sbin/switch-mode`      | `ap` / `status` |
-| `/usr/local/sbin/pi-lock-videos`   | `chmod 0444` + `chattr +i` auf `/srv/videos` |
-| `/usr/local/sbin/pi-unlock-videos` | Aufheben |
+**Admin-UI meldet 502 / Login geht nicht.**
+```bash
+sudo systemctl status video-token-admin
+sudo journalctl -u video-token-admin -b --no-pager | tail -50
+```
 
-## Hinweise
+**Wartungs-Modus wird nicht erkannt (bleibt im AP).**
+```bash
+# GPIO-Pegel: mit Brücke = 0, ohne = 1
+pinctrl get 27
+# Log der Boot-Entscheidung:
+sudo journalctl -u video-token-bootmode.service -b --no-pager
+# Client-Config vorhanden?
+ls -l /etc/wpa_supplicant/wpa_supplicant-client.conf
+```
+Fehlt die Client-Config, siehe [Wartungs-Modus](#wartungs-modus-heim-wlan-gpio-27).
 
-- Pi Zero W hat nur einen WLAN-Chip. Im AP-Modus gibt es kein Internet — das ist gewollt.
-- `wpa_supplicant` ist im Normalbetrieb deaktiviert, damit `hostapd` `wlan0` exklusiv nutzt.
-- Für iOS-Seek (Range-Requests) sind `Accept-Ranges: bytes` und `mp4`-MIME in `nginx.conf` gesetzt.
-- Upload-Geschwindigkeit ist durch den Pi-Zero-WLAN-Chip begrenzt (~1–2 MB/s). Für große Batches
-  empfiehlt sich der Wartungsmodus + `scp` über LAN.
+**Hinweise:**
+
+- Pi Zero W hat nur einen WLAN-Chip. Im AP-Modus gibt es kein Internet — gewollt.
+- `wpa_supplicant` ist im AP-Betrieb deaktiviert, damit `hostapd` `wlan0` exklusiv nutzt.
+- Upload-Geschwindigkeit ist durch den Pi-Zero-WLAN-Chip auf ~1–2 MB/s begrenzt.
+  Für große Batches lieber Wartungs-Modus + `scp` über LAN oder ZIP-Upload nutzen.
