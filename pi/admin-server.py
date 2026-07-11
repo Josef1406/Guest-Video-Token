@@ -345,7 +345,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
         # PUT /api/admin/upload-zip -> streaming ZIP-Upload in /var/lib/video-token/uploads
-        if self.path.split("?", 1)[0] == "/api/admin/upload-zip":
+        if put_path == "/api/admin/upload-zip":
             n = int(self.headers.get("Content-Length", "0") or "0")
             if n <= 0:
                 return self._json(400, {"error": "empty body"})
