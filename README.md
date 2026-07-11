@@ -280,6 +280,57 @@ Am Token selbst muss nichts angepasst werden.
 
 ---
 
+## Phonebooth-Direktupload (`/api/upload`)
+
+Externe Systeme (Video-Gästebuch / Phonebooth) können Videos direkt zum
+Token pushen — ohne Admin-PIN, authentifiziert über ein zufälliges
+Upload-Secret.
+
+**Secret**
+- Wird beim `install.sh` einmalig generiert (`openssl rand -hex 32`) und
+  liegt unter `/etc/video-token/upload.secret` (Modus `640 root:www-data`).
+- Auslesen: `sudo cat /etc/video-token/upload.secret`
+- Im Video-Gästebuch als `token_upload_secret` eintragen.
+
+**Endpoints (nginx `/api/` → 127.0.0.1:8080, Streaming, unbegrenzte Größe)**
+
+`POST /api/events`  – legt Event-Ordner idempotent an.
+```bash
+curl -X POST http://192.168.4.1/api/events \
+  -H "X-Upload-Secret: $SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"event":"Hochzeit Helga & Bernd"}'
+# -> {"ok":true,"event":"Hochzeit_Helga_Bernd","created":true,"path":"/srv/videos/..."}
+```
+
+`POST /api/upload`  – Multipart-Upload eines Videos.
+Felder: `event` (Pflicht), `filename` (optional, sonst wird der originale
+Dateiname des File-Feldes verwendet); File-Feld `file` mit dem MP4-Body.
+```bash
+curl -X POST http://192.168.4.1/api/upload \
+  -H "X-Upload-Secret: $SECRET" \
+  -F "event=Hochzeit Helga & Bernd" \
+  -F "filename=Take_01.mp4" \
+  -F "file=@/pfad/zum/video.mp4;type=video/mp4"
+# -> {"ok":true,"event":"...","file":"Take_01.mp4","size":...,
+#     "url":"/media/.../Take_01.mp4","play":"/v/.../Take_01.mp4"}
+```
+
+Ablauf serverseitig: der Datei-Teil wird direkt nach
+`/srv/videos/.uploads-tmp/<tok>.part` gestreamt und nach erfolgreichem
+Empfang atomar nach `/srv/videos/<event-slug>/<datei>.mp4` verschoben
+(`os.replace`), Rechte `0664` in Gruppe `videos`.
+
+Event-Namen werden zu Slugs normalisiert (nur `A-Z a-z 0-9 . _ - Leerzeichen`),
+Dateinamen müssen auf `.mp4` enden.
+
+Fehlermeldungen: `401 invalid or missing upload secret`, `400 invalid ...`,
+`507 not enough disk space`.
+
+---
+
+
+
 ## Troubleshooting
 
 **iPhone springt nach dem Verbinden mit `Video_GB` zurück ins Heimnetz.**
