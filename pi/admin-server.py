@@ -15,6 +15,11 @@ Admin (PIN-geschützt via Cookie):
 
 Public (offen, read-only):
   GET  /api/public/events            Liste aller Events + Videos
+
+Booth (PIN via Header, für Foto-/Videobooth-Uploads):
+  PUT  /api/booth/upload/<event>/<file.mp4>
+       Header: X-Booth-Pin: <pin>   (alternativ Authorization: Bearer <pin>)
+       Body:   MP4-Bytes (streamed). Event wird bei Bedarf angelegt.
 """
 import json, os, re, subprocess, secrets, time, shutil, hmac, shlex, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -285,11 +290,62 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- PUT ---- (Upload)
     def do_PUT(self):
+        put_path = self.path.split("?", 1)[0]
+
+        # Booth-Upload: PIN via Header, kein Cookie/Session nötig.
+        # PUT /api/booth/upload/<event>/<file.mp4>
+        m = re.match(r"^/api/booth/upload/([^/]+)/([^/]+)$", put_path)
+        if m:
+            pin_hdr = self.headers.get("X-Booth-Pin", "")
+            if not pin_hdr:
+                auth = self.headers.get("Authorization", "")
+                if auth.lower().startswith("bearer "):
+                    pin_hdr = auth[7:].strip()
+            if not pin_hdr or not hmac.compare_digest(str(pin_hdr), load_pin()):
+                time.sleep(0.3)
+                return self._json(401, {"error": "invalid pin"})
+            ev = safe_component(unquote(m.group(1)))
+            fn = safe_component(unquote(m.group(2)))
+            if not ev or not fn or not fn.lower().endswith(".mp4"):
+                return self._json(400, {"error": "invalid event/filename (must end .mp4)"})
+            n = int(self.headers.get("Content-Length", "0") or "0")
+            if n <= 0:
+                return self._json(400, {"error": "empty body"})
+            free = shutil.disk_usage(VIDEO_ROOT).free
+            if n > free - 50 * 1024 * 1024:
+                return self._json(507, {"error": "not enough disk space"})
+            os.makedirs(os.path.join(VIDEO_ROOT, ev), exist_ok=True)
+            dst = os.path.join(VIDEO_ROOT, ev, fn)
+            tmp = dst + ".part"
+            remaining = n
+            try:
+                with open(tmp, "wb") as f:
+                    while remaining > 0:
+                        chunk = self.rfile.read(min(1024 * 1024, remaining))
+                        if not chunk: break
+                        f.write(chunk)
+                        remaining -= len(chunk)
+                if remaining != 0:
+                    os.remove(tmp)
+                    return self._json(400, {"error": "short upload"})
+                os.replace(tmp, dst)
+                os.chmod(dst, 0o664)
+            except Exception as e:
+                try: os.remove(tmp)
+                except Exception: pass
+                return self._json(500, {"error": str(e)})
+            return self._json(200, {
+                "ok": True, "event": ev, "file": fn, "size": n,
+                "url":  f"/media/{ev}/{fn}",
+                "play": f"/v/{ev}/{fn}",
+            })
+
         if not is_authed(self.headers):
             return self._json(401, {"error": "unauthorized"})
 
+
         # PUT /api/admin/upload-zip -> streaming ZIP-Upload in /var/lib/video-token/uploads
-        if self.path.split("?", 1)[0] == "/api/admin/upload-zip":
+        if put_path == "/api/admin/upload-zip":
             n = int(self.headers.get("Content-Length", "0") or "0")
             if n <= 0:
                 return self._json(400, {"error": "empty body"})
