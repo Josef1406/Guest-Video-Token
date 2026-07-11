@@ -16,16 +16,18 @@ Admin (PIN-geschützt via Cookie):
 Public (offen, read-only):
   GET  /api/public/events            Liste aller Events + Videos
 """
-import json, os, re, subprocess, secrets, time, shutil, hmac, shlex
+import json, os, re, subprocess, secrets, time, shutil, hmac, shlex, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from http.cookies import SimpleCookie
-from urllib.parse import unquote
+from urllib.parse import unquote, parse_qs, urlparse
 
 PIN_FILE      = "/etc/video-token/admin.pin"
 MODE_FILE     = "/var/lib/video-token/mode"
 VIDEO_ROOT    = "/srv/videos"
+UPLOAD_TMP    = "/var/lib/video-token/uploads"
 SESSION_TTL   = 3600
 SESSIONS: dict[str, float] = {}
+os.makedirs(UPLOAD_TMP, exist_ok=True)
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._\- ]{1,120}$")
 
@@ -242,12 +244,93 @@ class Handler(BaseHTTPRequestHandler):
             os.makedirs(os.path.join(VIDEO_ROOT, name), exist_ok=True)
             return self._json(200, {"ok": True, "name": name})
 
+        # POST /api/admin/extract-zip -> {token, event}
+        if path == "/api/admin/extract-zip":
+            n = int(self.headers.get("Content-Length", "0") or "0")
+            try: data = json.loads(self.rfile.read(n) or b"{}")
+            except Exception: data = {}
+            token = str(data.get("token", ""))
+            ev = safe_component(str(data.get("event", "")))
+            if not re.match(r"^[A-Za-z0-9]{16,64}$", token) or not ev:
+                return self._json(400, {"error": "invalid token or event"})
+            src = os.path.join(UPLOAD_TMP, token + ".zip")
+            if not os.path.isfile(src):
+                return self._json(404, {"error": "upload not found"})
+            dst_dir = os.path.join(VIDEO_ROOT, ev)
+            os.makedirs(dst_dir, exist_ok=True)
+            extracted, skipped = [], []
+            try:
+                with zipfile.ZipFile(src) as zf:
+                    for info in zf.infolist():
+                        if info.is_dir(): continue
+                        base = os.path.basename(info.filename)
+                        safe = safe_component(base)
+                        if not safe or not safe.lower().endswith(".mp4"):
+                            skipped.append(base); continue
+                        out = os.path.join(dst_dir, safe)
+                        with zf.open(info) as srcf, open(out, "wb") as dstf:
+                            shutil.copyfileobj(srcf, dstf, 1024 * 1024)
+                        os.chmod(out, 0o664)
+                        extracted.append(safe)
+            except zipfile.BadZipFile:
+                return self._json(400, {"error": "invalid zip file"})
+            except Exception as e:
+                return self._json(500, {"error": str(e)})
+            try: os.remove(src)
+            except Exception: pass
+            return self._json(200, {"ok": True, "event": ev,
+                                    "extracted": extracted, "skipped": skipped})
+
         return self._json(404, {"error": "not found"})
 
     # ---- PUT ---- (Upload)
     def do_PUT(self):
         if not is_authed(self.headers):
             return self._json(401, {"error": "unauthorized"})
+
+        # PUT /api/admin/upload-zip -> streaming ZIP-Upload in /var/lib/video-token/uploads
+        if self.path.split("?", 1)[0] == "/api/admin/upload-zip":
+            n = int(self.headers.get("Content-Length", "0") or "0")
+            if n <= 0:
+                return self._json(400, {"error": "empty body"})
+            free = shutil.disk_usage(UPLOAD_TMP).free
+            if n > free - 100 * 1024 * 1024:
+                return self._json(507, {"error": "not enough disk space"})
+            token = secrets.token_urlsafe(18).replace("-", "").replace("_", "")[:24]
+            dst = os.path.join(UPLOAD_TMP, token + ".zip")
+            tmp = dst + ".part"
+            remaining = n
+            try:
+                with open(tmp, "wb") as f:
+                    while remaining > 0:
+                        chunk = self.rfile.read(min(1024 * 1024, remaining))
+                        if not chunk: break
+                        f.write(chunk)
+                        remaining -= len(chunk)
+                if remaining != 0:
+                    os.remove(tmp)
+                    return self._json(400, {"error": "short upload"})
+                os.replace(tmp, dst)
+            except Exception as e:
+                try: os.remove(tmp)
+                except Exception: pass
+                return self._json(500, {"error": str(e)})
+            # Zip inspizieren
+            entries = []
+            try:
+                with zipfile.ZipFile(dst) as zf:
+                    for info in zf.infolist():
+                        if info.is_dir(): continue
+                        base = os.path.basename(info.filename)
+                        if base.lower().endswith(".mp4"):
+                            entries.append({"name": base, "size": info.file_size,
+                                            "ok": bool(safe_component(base))})
+            except zipfile.BadZipFile:
+                os.remove(dst)
+                return self._json(400, {"error": "invalid zip file"})
+            return self._json(200, {"ok": True, "token": token, "size": n,
+                                    "mp4_count": len(entries), "entries": entries})
+
         m = re.match(r"^/api/admin/upload/([^/]+)/([^/]+)$", self.path)
         if not m:
             return self._json(404, {"error": "not found"})
@@ -302,6 +385,16 @@ class Handler(BaseHTTPRequestHandler):
                 # Falls immutable, aufheben
                 subprocess.run(["chattr", "-i", fp], capture_output=True, timeout=5)
                 os.remove(fp)
+            except Exception as e:
+                return self._json(500, {"error": str(e)})
+            return self._json(200, {"ok": True})
+        # Zip-Upload verwerfen
+        m = re.match(r"^/api/admin/zip/([A-Za-z0-9]{16,64})$", self.path)
+        if m:
+            token = m.group(1)
+            fp = os.path.join(UPLOAD_TMP, token + ".zip")
+            try:
+                if os.path.isfile(fp): os.remove(fp)
             except Exception as e:
                 return self._json(500, {"error": str(e)})
             return self._json(200, {"ok": True})

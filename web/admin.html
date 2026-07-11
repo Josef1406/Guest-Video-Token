@@ -86,6 +86,30 @@
     </div>
 
     <div class="card">
+      <h3>ZIP-Datei hochladen (ganzes Event)</h3>
+      <div class="row">
+        <input id="zipFile" type="file" accept=".zip,application/zip" />
+        <button id="btnZipUpload">ZIP hochladen</button>
+      </div>
+      <div id="zipProgress" style="margin-top:10px;"></div>
+      <div id="zipPreview" hidden style="margin-top:12px; padding:12px; border:1px solid #30363d; border-radius:8px; background:#0d1117;">
+        <p class="muted" id="zipInfo"></p>
+        <div class="row" style="margin:8px 0;">
+          <label style="flex:1; min-width:200px;">
+            <div class="muted" style="margin-bottom:4px;">Event-Name (wird angelegt oder ergänzt):</div>
+            <input id="zipEventName" type="text" style="width:100%;" />
+          </label>
+        </div>
+        <ul id="zipEntries" style="max-height:200px; overflow:auto; margin:8px 0; padding-left:20px; font-size:.9rem;"></ul>
+        <div class="row">
+          <button id="btnZipExtract">Als Event extrahieren</button>
+          <button id="btnZipDiscard" class="secondary">Verwerfen</button>
+        </div>
+        <p id="zipMsg" class="muted"></p>
+      </div>
+    </div>
+
+    <div class="card">
       <h3>Events &amp; Videos</h3>
       <div id="eventsList"><p class="muted">–</p></div>
     </div>
@@ -267,6 +291,85 @@ document.getElementById("btnUpload").addEventListener("click", async () => {
   } finally {
     btn.disabled = false;
   }
+});
+
+let currentZipToken = null;
+
+document.getElementById("btnZipUpload").addEventListener("click", () => {
+  const f = document.getElementById("zipFile").files[0];
+  if (!f) { alert("Bitte ZIP-Datei wählen."); return; }
+  if (!f.name.toLowerCase().endsWith(".zip")) { alert("Nur .zip erlaubt."); return; }
+  const btn = document.getElementById("btnZipUpload");
+  btn.disabled = true;
+  const box = document.getElementById("zipProgress");
+  box.innerHTML = `<div class="muted">${f.name} <span class="p">0%</span></div><progress max="100" value="0"></progress>`;
+  const pText = box.querySelector(".p");
+  const pBar  = box.querySelector("progress");
+  const xhr = new XMLHttpRequest();
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) {
+      const pct = (e.loaded/e.total*100).toFixed(0);
+      pBar.value = pct; pText.textContent = pct + "%";
+    }
+  };
+  xhr.onload = () => {
+    btn.disabled = false;
+    if (xhr.status < 200 || xhr.status >= 300) {
+      pText.textContent = "Fehler " + xhr.status;
+      alert("Upload-Fehler: " + xhr.responseText);
+      return;
+    }
+    pText.textContent = "hochgeladen";
+    let j; try { j = JSON.parse(xhr.responseText); } catch { j = {}; }
+    currentZipToken = j.token;
+    const prev = document.getElementById("zipPreview");
+    document.getElementById("zipInfo").textContent =
+      `${j.mp4_count} MP4-Datei(en) in ZIP (${fmtBytes(j.size)}).`;
+    const defaultName = f.name.replace(/\.zip$/i, "").replace(/[^A-Za-z0-9._\- ]/g, "-");
+    document.getElementById("zipEventName").value = defaultName;
+    document.getElementById("zipEntries").innerHTML = (j.entries || [])
+      .map(e => `<li${e.ok ? "" : ' style="color:#f85149"'}>${e.name} · ${fmtBytes(e.size)}${e.ok ? "" : " (übersprungen: ungültiger Name)"}</li>`)
+      .join("") || '<li class="muted">Keine .mp4 gefunden.</li>';
+    document.getElementById("zipMsg").textContent = "";
+    prev.hidden = false;
+  };
+  xhr.onerror = () => { btn.disabled = false; pText.textContent = "Netzwerkfehler"; };
+  xhr.open("PUT", "/api/admin/upload-zip");
+  xhr.withCredentials = true;
+  xhr.setRequestHeader("Content-Type", "application/zip");
+  xhr.send(f);
+});
+
+document.getElementById("btnZipExtract").addEventListener("click", async () => {
+  if (!currentZipToken) return;
+  const ev = document.getElementById("zipEventName").value.trim();
+  if (!ev) { alert("Event-Name fehlt."); return; }
+  const msg = document.getElementById("zipMsg");
+  msg.textContent = "Extrahiere…";
+  const r = await fetch("/api/admin/extract-zip", {
+    method: "POST", credentials: "same-origin",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({token: currentZipToken, event: ev})
+  });
+  const j = await r.json().catch(()=>({}));
+  if (!r.ok) { msg.textContent = "Fehler: " + (j.error || r.status); msg.style.color = "#f85149"; return; }
+  msg.style.color = "#2ea043";
+  msg.textContent = `Fertig: ${j.extracted.length} Video(s) extrahiert${j.skipped.length ? ", " + j.skipped.length + " übersprungen" : ""}.`;
+  currentZipToken = null;
+  document.getElementById("zipFile").value = "";
+  document.getElementById("zipPreview").hidden = true;
+  document.getElementById("zipProgress").innerHTML = "";
+  loadStatus();
+});
+
+document.getElementById("btnZipDiscard").addEventListener("click", async () => {
+  if (currentZipToken) {
+    await fetch("/api/admin/zip/" + currentZipToken, {method:"DELETE", credentials:"same-origin"}).catch(()=>{});
+  }
+  currentZipToken = null;
+  document.getElementById("zipFile").value = "";
+  document.getElementById("zipPreview").hidden = true;
+  document.getElementById("zipProgress").innerHTML = "";
 });
 
 function showLogin(err){
