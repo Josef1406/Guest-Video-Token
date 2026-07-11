@@ -23,6 +23,28 @@
   var text = "Mein Video vom Event: " + absUrl;
   wa.href = "https://wa.me/?text=" + encodeURIComponent(text);
 
+  var shareBtn = document.getElementById("share");
+  if (navigator.share) {
+    shareBtn.hidden = false;
+    shareBtn.addEventListener("click", async function () {
+      try {
+        // Versuche, die Datei selbst zu teilen (funktioniert offline im AP-Modus)
+        if (navigator.canShare) {
+          try {
+            var res = await fetch(mediaUrl);
+            var blob = await res.blob();
+            var file = new File([blob], fn, { type: blob.type || "video/mp4" });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({ files: [file], title: fn });
+              return;
+            }
+          } catch (_) { /* Fallback unten */ }
+        }
+        await navigator.share({ title: fn, text: "Mein Video vom Event", url: absUrl });
+      } catch (_) { /* abgebrochen */ }
+    });
+  }
+
   document.getElementById("meta").textContent = ev + " · " + fn;
   document.title = fn;
 })();
