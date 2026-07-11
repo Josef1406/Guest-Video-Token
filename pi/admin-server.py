@@ -45,6 +45,35 @@ def load_pin() -> str:
     except FileNotFoundError:
         return "1234"
 
+def load_upload_secret() -> str | None:
+    try:
+        with open(UPLOAD_SECRET_FILE) as f:
+            v = f.read().strip()
+            return v or None
+    except FileNotFoundError:
+        return None
+
+def check_upload_secret(headers) -> bool:
+    secret = load_upload_secret()
+    if not secret:
+        return False
+    got = headers.get("X-Upload-Secret", "")
+    if not got:
+        auth = headers.get("Authorization", "")
+        if auth.lower().startswith("bearer "):
+            got = auth[7:].strip()
+    return bool(got) and hmac.compare_digest(str(got), secret)
+
+def slug_event(name: str) -> str | None:
+    if not name:
+        return None
+    s = SLUG_RE.sub("_", name).strip("._ ")
+    s = re.sub(r"_+", "_", s)
+    if not s or s in (".", ".."):
+        return None
+    return s[:120]
+
+
 def gc_sessions():
     now = time.time()
     for k, t in list(SESSIONS.items()):
