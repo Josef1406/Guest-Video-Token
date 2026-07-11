@@ -172,8 +172,10 @@ if [[ ( "$LEVEL" == "0" || "$FORCE" == "1" ) && -n "$ACTIVE_CLIENT_CONF" ]]; the
     systemctl enable wpa_supplicant.service 2>/dev/null || true
   fi
 else
-  echo "boot-mode: NORMAL (AP/USB)"
+  echo "boot-mode: NORMAL (AP)"
+  set_led ap
   write_nm_unmanaged
+
   # AP-Static-IP-Block wieder aktivieren, falls zuvor deaktiviert.
   sed -i 's|^#vt-ap# ||' "$DHCPCD_CONF" || true
   if command -v nmcli >/dev/null 2>&1; then
