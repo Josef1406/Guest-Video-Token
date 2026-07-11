@@ -73,12 +73,12 @@ extract_wpa_value() {
   sed -nE "s/^[[:space:]]*${key}=\"(.*)\"[[:space:]]*$/\1/p" "$file" | head -n1
 }
 
-# Duo-LED (2-polig, antiparallel) an GPIO 23 (Pin 16) und GPIO 24 (Pin 18)
+# Duo-LED (2-polig, antiparallel) an GPIO 23 (Pin 16) und GPIO 16 (Pin 36)
 # mit ~330 Ohm Vorwiderstand in Reihe.
-#   Wartungsmodus (Client): GPIO23=HIGH, GPIO24=LOW  -> Farbe A (z.B. gruen)
-#   AP-Modus (Normal):      GPIO23=LOW,  GPIO24=HIGH -> Farbe B (z.B. rot)
+#   Wartungsmodus (Client): GPIO23=HIGH, GPIO16=LOW  -> Farbe A (z.B. gruen)
+#   AP-Modus (Normal):      GPIO23=LOW,  GPIO16=HIGH -> Farbe B (z.B. rot)
 LED_A=23
-LED_B=24
+LED_B=16
 set_led() {
   # $1 = state: "client" | "ap" | "off"
   local a=0 b=0
