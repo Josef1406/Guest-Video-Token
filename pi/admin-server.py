@@ -244,6 +244,43 @@ class Handler(BaseHTTPRequestHandler):
             os.makedirs(os.path.join(VIDEO_ROOT, name), exist_ok=True)
             return self._json(200, {"ok": True, "name": name})
 
+        # POST /api/admin/extract-zip -> {token, event}
+        if path == "/api/admin/extract-zip":
+            n = int(self.headers.get("Content-Length", "0") or "0")
+            try: data = json.loads(self.rfile.read(n) or b"{}")
+            except Exception: data = {}
+            token = str(data.get("token", ""))
+            ev = safe_component(str(data.get("event", "")))
+            if not re.match(r"^[A-Za-z0-9]{16,64}$", token) or not ev:
+                return self._json(400, {"error": "invalid token or event"})
+            src = os.path.join(UPLOAD_TMP, token + ".zip")
+            if not os.path.isfile(src):
+                return self._json(404, {"error": "upload not found"})
+            dst_dir = os.path.join(VIDEO_ROOT, ev)
+            os.makedirs(dst_dir, exist_ok=True)
+            extracted, skipped = [], []
+            try:
+                with zipfile.ZipFile(src) as zf:
+                    for info in zf.infolist():
+                        if info.is_dir(): continue
+                        base = os.path.basename(info.filename)
+                        safe = safe_component(base)
+                        if not safe or not safe.lower().endswith(".mp4"):
+                            skipped.append(base); continue
+                        out = os.path.join(dst_dir, safe)
+                        with zf.open(info) as srcf, open(out, "wb") as dstf:
+                            shutil.copyfileobj(srcf, dstf, 1024 * 1024)
+                        os.chmod(out, 0o664)
+                        extracted.append(safe)
+            except zipfile.BadZipFile:
+                return self._json(400, {"error": "invalid zip file"})
+            except Exception as e:
+                return self._json(500, {"error": str(e)})
+            try: os.remove(src)
+            except Exception: pass
+            return self._json(200, {"ok": True, "event": ev,
+                                    "extracted": extracted, "skipped": skipped})
+
         return self._json(404, {"error": "not found"})
 
     # ---- PUT ---- (Upload)
