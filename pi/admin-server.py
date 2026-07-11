@@ -215,6 +215,132 @@ def build_status():
         "timestamp":  int(time.time()),
     }
 
+# --- Multipart streaming parser -------------------------------------------
+
+def stream_multipart(rfile, content_length: int, boundary: str, tmp_dir: str):
+    """Streamt einen multipart/form-data-Body.
+    Text-Felder werden in ein dict gesammelt, das ERSTE File-Feld
+    wird per Chunks in eine .part-Datei in tmp_dir gestreamt.
+    Rückgabe: (fields:dict, file_info|None)
+    """
+    delim = b"--" + boundary.encode()
+    end_delim = delim + b"--"
+    marker = b"\r\n" + delim
+
+    remaining = [content_length]
+    buf = bytearray()
+
+    def read_more(min_bytes=1):
+        while len(buf) < min_bytes and remaining[0] > 0:
+            chunk = rfile.read(min(65536, remaining[0]))
+            if not chunk:
+                remaining[0] = 0
+                break
+            buf.extend(chunk)
+            remaining[0] -= len(chunk)
+        return len(buf) >= min_bytes
+
+    def read_line():
+        while True:
+            idx = buf.find(b"\r\n")
+            if idx >= 0:
+                line = bytes(buf[:idx])
+                del buf[:idx + 2]
+                return line
+            if not read_more(len(buf) + 1):
+                return None
+
+    # Preamble bis zum ersten Boundary überspringen
+    while True:
+        line = read_line()
+        if line is None:
+            raise ValueError("no boundary found")
+        if line == end_delim:
+            return {}, None
+        if line == delim:
+            break
+
+    fields: dict[str, str] = {}
+    file_info = None
+
+    while True:
+        # Header
+        headers = {}
+        while True:
+            line = read_line()
+            if line is None:
+                raise ValueError("truncated part headers")
+            if line == b"":
+                break
+            k, _, v = line.decode("utf-8", "replace").partition(":")
+            headers[k.strip().lower()] = v.strip()
+
+        disp = headers.get("content-disposition", "")
+        pname_m = re.search(r'name="([^"]*)"', disp)
+        fname_m = re.search(r'filename="([^"]*)"', disp)
+        pname = pname_m.group(1) if pname_m else ""
+        filename = fname_m.group(1) if fname_m else None
+
+        is_file = filename is not None and file_info is None
+
+        if is_file:
+            os.makedirs(tmp_dir, exist_ok=True)
+            tmp_path = os.path.join(tmp_dir, "up-" + secrets.token_urlsafe(12) + ".part")
+            size = 0
+            fout = open(tmp_path, "wb")
+            try:
+                while True:
+                    idx = buf.find(marker)
+                    if idx >= 0:
+                        fout.write(bytes(buf[:idx]))
+                        size += idx
+                        del buf[:idx + 2]  # \r\n konsumieren, delim bleibt
+                        break
+                    keep = len(marker)
+                    if len(buf) > keep:
+                        fout.write(bytes(buf[:-keep]))
+                        size += len(buf) - keep
+                        del buf[:-keep]
+                    if remaining[0] <= 0 and len(buf) < len(marker):
+                        raise ValueError("body truncated")
+                    read_more(len(buf) + 1)
+            finally:
+                fout.close()
+            file_info = {
+                "name": pname, "filename": filename,
+                "content_type": headers.get("content-type", ""),
+                "path": tmp_path, "size": size,
+            }
+        else:
+            data = bytearray()
+            while True:
+                idx = buf.find(marker)
+                if idx >= 0:
+                    data.extend(buf[:idx])
+                    del buf[:idx + 2]
+                    break
+                keep = len(marker)
+                if len(buf) > keep:
+                    data.extend(buf[:-keep])
+                    del buf[:-keep]
+                if remaining[0] <= 0 and len(buf) < len(marker):
+                    raise ValueError("field truncated")
+                read_more(len(buf) + 1)
+            if filename is None:
+                fields[pname] = data.decode("utf-8", "replace")
+
+        # buf beginnt jetzt mit delim; entweder end_delim oder delim+\r\n
+        read_more(len(end_delim) + 2)
+        if buf[:len(end_delim)] == end_delim:
+            return fields, file_info
+        if buf[:len(delim)] == delim:
+            del buf[:len(delim)]
+            if buf[:2] == b"\r\n":
+                del buf[:2]
+            continue
+        raise ValueError("malformed multipart stream")
+
+
 # --- HTTP ------------------------------------------------------------------
 
 class Handler(BaseHTTPRequestHandler):
