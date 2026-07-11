@@ -277,7 +277,7 @@ class Handler(BaseHTTPRequestHandler):
                 os.remove(tmp)
                 return self._json(400, {"error": "short upload"})
             os.replace(tmp, dst)
-            os.chmod(dst, 0o644)
+            os.chmod(dst, 0o664)
         except Exception as e:
             try: os.remove(tmp)
             except Exception: pass
