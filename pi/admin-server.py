@@ -380,7 +380,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(400, {"error": "invalid path"})
             fp = os.path.join(VIDEO_ROOT, ev, fn)
             if not os.path.isfile(fp):
-                return self._json(404, {"error": "not found"})
+        # Zip-Upload verwerfen
+        m = re.match(r"^/api/admin/zip/([A-Za-z0-9]{16,64})$", self.path)
+        if m:
+            token = m.group(1)
+            fp = os.path.join(UPLOAD_TMP, token + ".zip")
+            try:
+                if os.path.isfile(fp): os.remove(fp)
+            except Exception as e:
+                return self._json(500, {"error": str(e)})
+            return self._json(200, {"ok": True})
+        return self._json(404, {"error": "not found"})
             try:
                 # Falls immutable, aufheben
                 subprocess.run(["chattr", "-i", fp], capture_output=True, timeout=5)
