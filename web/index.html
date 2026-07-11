@@ -3,49 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="robots" content="noindex" />
   <title>Video-Gästebuch</title>
   <link rel="stylesheet" href="/assets/styles.css" />
-  <style>
-    .event { border:1px solid #30363d; border-radius:12px; padding:12px 14px; margin:10px 0; background:#161b22; }
-    .event h3 { margin:0 0 8px; }
-    .vid { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-top:1px solid #30363d; }
-    .vid:first-of-type { border-top:0; }
-    .vid a { color:#58a6ff; text-decoration:none; word-break:break-all; }
-    .size { color:#8b949e; font-size:.85rem; white-space:nowrap; }
-    .muted { color:#8b949e; }
-  </style>
 </head>
 <body>
   <main class="wrap">
     <h1>Video-Gästebuch</h1>
-    <p class="lead">Scanne den QR-Code auf deinem Ausdruck – oder wähle unten dein Event.</p>
-    <p class="muted">Kein Internet nötig – du bist mit dem WLAN <b>Video_GB</b> verbunden.</p>
-
-    <div id="events"><p class="muted">Lade Events…</p></div>
+    <p class="lead">Bitte scanne den QR-Code auf deinem Ausdruck, um dein Video zu öffnen.</p>
+    <p class="muted">Du bist mit dem WLAN <b>Video_GB</b> verbunden.</p>
   </main>
-  <script>
-    const fmt = b => {
-      if (!b && b !== 0) return "";
-      const u = ["B","KB","MB","GB"]; let i=0;
-      while (b >= 1024 && i < u.length-1) { b/=1024; i++; }
-      return b.toFixed(b<10?2:b<100?1:0) + " " + u[i];
-    };
-    fetch("/api/public/events").then(r => r.json()).then(({events}) => {
-      const box = document.getElementById("events");
-      if (!events.length) { box.innerHTML = '<p class="muted">Noch keine Videos vorhanden.</p>'; return; }
-      box.innerHTML = events.map(e => `
-        <div class="event">
-          <h3>${e.name} <span class="muted">· ${e.count} Video${e.count===1?"":"s"}</span></h3>
-          ${e.videos.map(v => `
-            <div class="vid">
-              <a href="${v.play}">${v.name}</a>
-              <span class="size">${fmt(v.size)}</span>
-            </div>`).join("") || '<p class="muted">Leer</p>'}
-        </div>`).join("");
-    }).catch(err => {
-      document.getElementById("events").innerHTML =
-        '<p class="muted">Fehler beim Laden: ' + err.message + '</p>';
-    });
-  </script>
 </body>
 </html>
