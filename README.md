@@ -30,9 +30,6 @@ mit einem ~330 Ω Vorwiderstand in Reihe. Farbe je nach Stromrichtung:
 
 Alle anderen GPIO-Rollen (Modus-Schalter, USB-Read-Only) sind entfallen.
 
-
-Alle anderen GPIO-Rollen (Modus-Schalter, USB-Read-Only) sind entfallen.
-
 ## SD-Karte flashen (einziger Setup-Schritt)
 
 Mit dem **Raspberry Pi Imager** (Windows/Mac/Linux):
