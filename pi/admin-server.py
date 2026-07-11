@@ -27,6 +27,7 @@ from http.cookies import SimpleCookie
 from urllib.parse import unquote, parse_qs, urlparse
 
 PIN_FILE      = "/etc/video-token/admin.pin"
+UPLOAD_SECRET_FILE = "/etc/video-token/upload.secret"
 MODE_FILE     = "/var/lib/video-token/mode"
 VIDEO_ROOT    = "/srv/videos"
 UPLOAD_TMP    = "/var/lib/video-token/uploads"
@@ -35,6 +36,7 @@ SESSIONS: dict[str, float] = {}
 os.makedirs(UPLOAD_TMP, exist_ok=True)
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._\- ]{1,120}$")
+SLUG_RE   = re.compile(r"[^A-Za-z0-9._\- ]+")
 
 def load_pin() -> str:
     try:
