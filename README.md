@@ -23,35 +23,45 @@ alles Weitere läuft über die Admin-Web-UI.
 
 Alle anderen GPIO-Rollen (Modus-Schalter, USB-Read-Only) sind entfallen.
 
-## SD-Karte
+## SD-Karte flashen (einziger Setup-Schritt)
 
-Empfohlenes Layout (min. 16 GB, für viele Videos mehr):
+Mit dem **Raspberry Pi Imager** (Windows/Mac/Linux):
 
-```
-p1  FAT32   ~256 MB   /boot
-p2  ext4    Rest      /            (Raspberry Pi OS Lite, enthält /srv/videos)
-```
+1. **OS wählen:** *Raspberry Pi OS Lite (32-bit)* – „Legacy" ist ok, Bookworm ebenso.
+2. **Speicher:** deine SD-Karte (≥ 16 GB, für viele Videos mehr).
+3. **⚙️ Zahnrad-Symbol (Erweitert)** anklicken und eintragen:
+   - **Hostname:** z. B. `videotoken`
+   - **SSH aktivieren:** Passwort-Auth, Benutzer `pi` + Passwort setzen
+   - **WLAN konfigurieren:** deine **Heim-WLAN-SSID + Passwort** (Land `DE`)
+     – wird für die **einmalige Installation** und für spätere Wartung genutzt.
+4. **Schreiben.** Danach SD-Karte in den Pi, einschalten, ~2 Minuten warten.
 
-Ein separates Datenpartitions-Label ist **nicht** mehr nötig — Videos liegen
-einfach unter `/srv/videos` auf der Root-Partition. Wer trotzdem mit exFAT
-oder einer Extra-Partition arbeiten möchte, kann sie unter `/srv/videos`
-mounten (fstab-Eintrag).
+Keine Partitionierung, kein GParted, kein manuelles Mounten nötig.
+Videos landen später einfach unter `/srv/videos` auf der Root-Partition.
 
-## Installation
+## Installation (ein Befehl)
+
+Pi mit deinem Heim-WLAN gestartet, IP am Router ablesen, dann per SSH:
 
 ```bash
-sudo apt update && sudo apt install -y git
-git clone <dieses-repo> guest-video-token
-cd guest-video-token
-sudo bash pi/install.sh
+ssh pi@<ip-des-pi>
+curl -fsSL https://raw.githubusercontent.com/Josef1406/Guest-Video-Token/main/pi/bootstrap.sh | sudo bash
 sudo reboot
 ```
+
+Das Bootstrap-Skript installiert `git`, klont das Repo nach `/opt/guest-video-token`,
+übernimmt deine Heim-WLAN-Zugangsdaten aus dem Imager-Setup automatisch als
+Wartungs-Config und startet den Installer.
 
 Nach dem Reboot:
 
 - Gäste-WLAN: **`Video_GB`** (offen)
 - Startseite: `http://192.168.4.1/`
 - Admin:     `http://192.168.4.1/admin.html` (Standard-PIN `1234`)
+
+Für spätere Wartung: GPIO 27 → GND beim Boot brücken → Pi geht wieder ins Heim-WLAN
+(siehe Abschnitt „Wartungs-Modus" unten).
+
 
 ## Videos verwalten (Admin)
 
@@ -87,7 +97,12 @@ http://192.168.4.1/v/<event-slug>/<event-slug>_TT_MM_JJJJ_HH_MM_SS_PIN.mp4
 
 ## Wartungs-Modus (Heim-WLAN, GPIO 27)
 
-Einmalig einrichten:
+Wenn du beim Flashen im Imager schon dein Heim-WLAN eingetragen hast, hat das
+`bootstrap.sh` diese Zugangsdaten bereits nach
+`/etc/wpa_supplicant/wpa_supplicant-client.conf` übernommen — du musst nichts
+mehr manuell konfigurieren.
+
+Falls doch: einmalig anlegen:
 
 ```bash
 sudo cp /etc/wpa_supplicant/wpa_supplicant-client.conf.example \
@@ -95,6 +110,7 @@ sudo cp /etc/wpa_supplicant/wpa_supplicant-client.conf.example \
 sudo nano /etc/wpa_supplicant/wpa_supplicant-client.conf   # SSID + PSK
 sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant-client.conf
 ```
+
 
 Nutzung:
 
