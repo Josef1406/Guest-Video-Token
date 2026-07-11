@@ -15,6 +15,11 @@ Admin (PIN-geschützt via Cookie):
 
 Public (offen, read-only):
   GET  /api/public/events            Liste aller Events + Videos
+
+Booth (PIN via Header, für Foto-/Videobooth-Uploads):
+  PUT  /api/booth/upload/<event>/<file.mp4>
+       Header: X-Booth-Pin: <pin>   (alternativ Authorization: Bearer <pin>)
+       Body:   MP4-Bytes (streamed). Event wird bei Bedarf angelegt.
 """
 import json, os, re, subprocess, secrets, time, shutil, hmac, shlex, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
