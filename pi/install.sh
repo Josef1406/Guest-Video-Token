@@ -54,7 +54,15 @@ rfkill unblock wlan || true
 
 echo "==> Webroot & Video-Verzeichnis"
 mkdir -p /srv/videos
-chown -R www-data:www-data /srv/videos || true
+# Gruppe 'videos' anlegen, pi + www-data hinzufügen, damit beide schreiben können
+groupadd -f videos
+usermod -aG videos www-data || true
+if id pi >/dev/null 2>&1; then usermod -aG videos pi || true; fi
+chown -R www-data:videos /srv/videos || true
+# setgid, damit neue Dateien/Unterordner die Gruppe 'videos' erben
+chmod 2775 /srv/videos
+find /srv/videos -mindepth 1 -type d -exec chmod 2775 {} + 2>/dev/null || true
+find /srv/videos -mindepth 1 -type f -exec chmod 0664 {} + 2>/dev/null || true
 mkdir -p /var/www/video-token
 cp -r "$REPO_DIR/../web/." /var/www/video-token/
 chown -R www-data:www-data /var/www/video-token
