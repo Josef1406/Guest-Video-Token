@@ -9,19 +9,26 @@
 </head>
 <body>
   <main class="wrap">
-    <h1>Dein Video</h1>
+    <h1>Dein Video 🎬</h1>
     <p id="meta" class="muted"></p>
 
-    <video id="player" controls playsinline preload="metadata"></video>
+    <div class="card" style="margin-top: 14px;">
+      <video id="player" controls playsinline preload="metadata"></video>
 
-    <div class="actions">
-      <a id="dl" class="btn primary" download>Download</a>
-      <button id="share" class="btn" type="button" hidden>Teilen</button>
-      <a id="wa" class="btn" target="_blank" rel="noopener">Per WhatsApp teilen</a>
+      <div class="actions">
+        <a id="dl" class="btn primary" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12"/>
+            <path d="m7 10 5 5 5-5"/>
+            <path d="M5 21h14"/>
+          </svg>
+          Aufs Handy laden
+        </a>
+      </div>
     </div>
 
-    <p class="muted small">
-      Tipp: Halte das Video im Player gedrückt (iOS: „In Fotos sichern"), um es lokal zu speichern.
+    <p class="muted small" style="margin-top: 14px;">
+      Tipp: Halte das Video im Player gedrückt (iOS: „In Fotos sichern"), um es direkt in deine Galerie zu speichern.
     </p>
   </main>
   <script src="/assets/player.js"></script>
