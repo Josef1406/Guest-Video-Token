@@ -1,8 +1,8 @@
 # Guest_Video_Token
 
 Offline-Video-Token auf **Raspberry Pi Zero W**. Gäste einer Veranstaltung
-verbinden sich mit einem offenen WLAN und öffnen dort ihre Videos zum Ansehen,
-Herunterladen oder Teilen (WhatsApp / Fotos). **Kein Internet nötig.**
+verbinden sich mit einem offenen WLAN und öffnen dort ihre Videos zum Ansehen
+und Herunterladen. **Kein Internet nötig.**
 Videos werden vom Admin bequem über das Web-Admin-Interface hochgeladen —
 einzeln, mehrere MP4s parallel oder als ZIP mit einem ganzen Event.
 
@@ -111,8 +111,51 @@ brücken. Siehe [Wartungs-Modus](#wartungs-modus-heim-wlan-gpio-27).
 
 ## Gäste-Ansicht
 
-Die Startseite (`/`) zeigt bewusst **nur einen Hinweis**, den QR-Code des
-eigenen Videos zu scannen — keine Liste, keine Übersicht anderer Gäste.
+Die Startseite (`/`) zeigt die WLAN-Anmeldung und einen Link zum lokalen
+QR-Foto-Scanner — keine Liste, keine Übersicht anderer Gäste.
+
+### Ein Cloud-QR für Cloud und Token (ohne Zertifikat)
+
+Der gedruckte QR kann unverändert dieses Format enthalten:
+
+```text
+https://video.gaestebuch.cloud/v/<event-slug>/<event-slug>_TT_MM_JJJJ_HH_MM_SS_PIN.mp4
+```
+
+- **Cloud:** Mit der normalen Kamera scannen, wie bisher.
+- **Token:** Videos unter `/srv/videos/<event-slug>/<dateiname>.mp4` kopieren.
+  Ordner- und Dateinamen müssen exakt dem Cloud-Link entsprechen.
+  Gäste verbinden sich mit `Video_GB`, nehmen die Verbindung an und wählen
+  am iPhone nach „Success“ über das X „Ohne Internet verwenden“.
+  Danach in Safari/Chrome **`http://192.168.4.1/scan.html`** öffnen,
+  „QR-Code fotografieren“ antippen und den QR auf dem Aufkleber fotografieren.
+  Je nach Gerät öffnet sich die Kamera oder die Fotoauswahl.
+
+Der Scanner liest das Foto vollständig lokal mit dem mitgelieferten jsQR
+(Apache-2.0, Lizenz unter `web/assets/jsQR.LICENSE`). Weder Foto noch Cloud-Link
+werden ins Internet hochgeladen. Er übernimmt Event und Datei unverändert,
+prüft die lokale MP4 und öffnet den bestehenden Player. Kein TLS-Zertifikat,
+kein Internet und keine Änderung der gedruckten Cloud-QRs nötig.
+Als Alternative kann der vollständige Video-Link eingefügt werden.
+
+Wichtig: Das ist **kein Live-Kamera-Scanner** (`getUserMedia` ist auf HTTP
+normalerweise gesperrt). Verwendet wird die Fotoaufnahme über die Dateiauswahl.
+Bitte im normalen Browser öffnen, nicht im iOS-Captive-Fenster. Ein direkter
+Scan mit der normalen Kamera öffnet weiterhin den HTTPS-Cloud-Link.
+Andere Domains oder QR-Formate mit einer undurchsichtigen ID werden abgewiesen.
+Fehlt die lokale Datei, bleibt die Seite mit einer verständlichen Meldung offen.
+
+**Bestehenden Token aktualisieren (Wartungsmodus mit Internet):**
+
+```bash
+cd /opt/guest-video-token && sudo git pull
+sudo cp -r web/. /var/www/video-token/
+```
+
+Kein Installer-Lauf oder nginx-Neustart nötig. Scanner-Dateien müssen komplett
+mitkopiert werden. Bei alten Seiten im Safari-Cache die Websitedaten für
+`192.168.4.1` löschen. Die Fotoaufnahme auf einem echten iPhone/Android bitte
+nach dem Rollout prüfen; sie kann im Captive-Fenster eingeschränkt sein.
 
 ### QR-Code-URL-Schema (kompatibel zum Video-Gästebuch)
 
@@ -123,9 +166,7 @@ http://192.168.4.1/v/<event-slug>/<event-slug>_TT_MM_JJJJ_HH_MM_SS_PIN.mp4
 Auf der Player-Seite (`v.html`) hat der Gast:
 
 - **Abspielen** — HTML5-Player mit Range-Support (iOS-Seek funktioniert)
-- **Download** — MP4 direkt aufs Handy (WhatsApp / Fotos-App)
-- **Teilen** — Web Share API (teilt bei Unterstützung die Datei selbst,
-  auch offline); Fallback auf `wa.me`-Link
+- **Aufs Handy laden** — MP4 direkt herunterladen
 - **Kein Delete** — Gäste haben nur Leserechte
 
 Anhang `?raw=1` liefert direkt die MP4-Datei (für externe Downloader).
@@ -276,7 +317,8 @@ wird pro Event entschieden, ob QR-Codes für Cloud oder Token generiert werden:
 | cloud  | `https://videos.deinedomain.de/<event>/<file>.mp4` |
 | token  | `http://192.168.4.1/v/<event>/<file>.mp4` |
 
-Am Token selbst muss nichts angepasst werden.
+Alternativ kann immer der Cloud-QR im oben dokumentierten Format gedruckt
+werden: Auf dem Token wird er über `/scan.html` per Foto lokal geöffnet.
 
 ---
 
