@@ -21,6 +21,7 @@
   src.src = mediaUrl;
   src.type = "video/mp4";
   player.appendChild(src);
+  player.load();
 
   var dl = document.getElementById("dl");
   dl.href = mediaUrl;
