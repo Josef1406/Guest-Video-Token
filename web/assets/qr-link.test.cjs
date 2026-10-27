@@ -1,9 +1,13 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { localVideoLink } = require('./qr-link.js');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const sandbox = { URL, module: { exports: {} } };
+vm.runInNewContext(fs.readFileSync(__dirname + '/qr-link.js', 'utf8'), sandbox);
+const { localVideoLink } = sandbox.module.exports;
 const file = 'Hochzeit_11_07_2026_16_12_32_3YGYWD.mp4';
 test('Cloud-QR preserves event and filename and returns only local HTTP-compatible paths', () => {
-  assert.deepEqual(localVideoLink(`https://video.gaestebuch.cloud/v/Hochzeit/${file}`), {
+  assert.deepEqual({ ...localVideoLink(`https://video.gaestebuch.cloud/v/Hochzeit/${file}`) }, {
     player: `/v/Hochzeit/${file}`, media: `/media/Hochzeit/${file}`,
   });
 });
