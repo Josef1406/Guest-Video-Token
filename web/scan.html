@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="robots" content="noindex" />
+  <title>Video_GB – Video-QR scannen</title>
+  <meta name="description" content="Video-Botschaft per QR-Foto direkt auf dem Offline-Token öffnen." />
+  <meta property="og:title" content="Video_GB – Video-QR scannen" />
+  <meta property="og:description" content="Deine Video-Botschaft auf dem Token ansehen und herunterladen." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="wrap scanner">
+    <a class="small" href="/">← WLAN-Verbindung</a>
+    <h1>Deine Video-Botschaft</h1>
+    <p class="lead">QR-Code auf deinem Aufkleber fotografieren</p>
+    <svg class="scan-symbol" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="4" aria-hidden="true">
+      <path d="M28 10H10v18m82-18h18v18M10 92v18h18m82-18v18H92" />
+      <path d="M30 30h22v22H30zm38 0h22v22H68zM30 68h22v22H30zm38 0h10v10H68zm12 12h10v10H80zM68 90v-8M90 68h-8" />
+    </svg>
+    <div class="actions">
+      <button id="take-photo" class="btn primary" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/></svg>
+        QR-Code fotografieren
+      </button>
+    </div>
+    <input id="qr-photo" type="file" accept="image/*" capture="environment" hidden />
+    <p id="scan-status" class="scan-status muted" role="status" aria-live="polite">Bleibe im WLAN Video_GB.</p>
+    <details class="scan-fallback">
+      <summary>Video-Link einfügen</summary>
+      <form id="link-form">
+        <label for="video-link">Link vom Video-QR</label>
+        <input id="video-link" type="url" inputmode="url" autocomplete="off" placeholder="https://video.gaestebuch.cloud/v/…" required />
+        <button class="btn" type="submit">Video öffnen</button>
+      </form>
+    </details>
+    <noscript><p>Bitte aktiviere JavaScript, um den QR-Code zu lesen.</p></noscript>
+  </main>
+  <script src="/assets/jsQR.js"></script>
+  <script src="/assets/qr-link.js"></script>
+  <script src="/assets/scan.js"></script>
+</body>
+</html>
