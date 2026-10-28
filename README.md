@@ -111,8 +111,10 @@ brücken. Siehe [Wartungs-Modus](#wartungs-modus-heim-wlan-gpio-27).
 
 ## Gäste-Ansicht
 
-Die Startseite (`/`) zeigt die WLAN-Anmeldung und einen Link zum lokalen
-QR-Foto-Scanner — keine Liste, keine Übersicht anderer Gäste.
+Die Startseite (`/`) zeigt die WLAN-Anmeldung und ausschließlich den vom Admin
+gespeicherten Video-Link-Modus — keine Moduswahl für Kunden, keine Video-Liste.
+Der lokale QR-Foto-Scanner bleibt unter `/scan.html` verfügbar; auf der
+Startseite wird er nur im Zertifikat-Modus als Übergangslösung verlinkt.
 
 ### Zwei Video-Link-Modi (neu)
 
@@ -127,6 +129,10 @@ Auf der Startseite führt **Admin · PIN** zur vorhandenen PIN-Anmeldung. Unter
 Die Auswahl wird atomar in `/etc/video-token/video-link.json` gespeichert und
 bleibt bei Neustart und erneuter Installation erhalten. Sie ist **unabhängig**
 vom AP-/Wartungsmodus, GPIO 27 und der LED.
+Nur nach PIN-Anmeldung in der Admin-Oberfläche kann die Auswahl geändert
+werden. Gäste lesen lediglich den gespeicherten Modus. Beim Zurückkehren
+zur Startseite wird die Auswahl erneut vom Pi geladen; solange sie nicht
+erreichbar ist, wird kein Video-Link-Modus angezeigt.
 
 **Wichtig: HTTPS ist noch nicht aktiviert.** Die Domain verwendet derzeit
 Hetzner-Nameserver; der berechtigte Domain-Verwalter und DNS-Zugriff sind noch

@@ -31,14 +31,13 @@
 <ol class="welcome-steps">
 <li><span class="welcome-num">1</span><div><span class="welcome-step-title">Verbindung annehmen</span><p>Tippe unten auf den Button. Es erscheint „Success“.</p></div></li>
 <li><span class="welcome-num">2</span><div><span class="welcome-step-title">Am iPhone: Kreis mit X drücken</span><p>Schließe die „Success“-Seite oben rechts. Wähle danach im WLAN-Dialog <b>„Ohne Internet verwenden“</b>.</p></div></li>
-<li><span class="welcome-num">3</span><div><span class="welcome-step-title">Deine Video-Botschaft öffnen</span><p id="scan-instruction">Öffne die normale Handy-Kamera und scanne den QR-Code auf deinem Video-Botschaft-Aufkleber.</p></div></li>
+<li id="video-instructions" hidden><span class="welcome-num">3</span><div><span class="welcome-step-title">Deine Video-Botschaft öffnen</span><p id="scan-instruction"></p></div></li>
 </ol>
 <form id="accept-form" class="welcome-actions" method="get" action="/accept"><button class="welcome-btn welcome-wide" type="submit">Verbindung annehmen <span aria-hidden="true">→</span></button></form>
 </section>
 <section id="normal-mode" class="welcome-section" hidden>
 <h2>Dein QR-Code ist der direkte Weg.</h2>
 <p class="welcome-lead">Für Video-QRs mit http://192.168.4.1 brauchst du kein Zertifikat. Kamera öffnen, Aufkleber scannen und Video ansehen.</p>
-<p class="welcome-note">Du hast einen Cloud-QR? <a href="/scan.html">QR-Foto lokal lesen →</a></p>
 </section>
 <section id="https-mode" class="welcome-section" hidden>
 <h2>Zertifikat für Cloud-QRs</h2>

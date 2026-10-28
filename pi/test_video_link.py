@@ -35,6 +35,14 @@ class VideoLinkRules(unittest.TestCase):
         self.assertFalse(video_link.status()["certificate"]["ready"])
         self.assertFalse(video_link.status()["certificate"]["renewal_available"])
 
+    def test_saved_selection_survives_module_restart_for_both_modes(self):
+        for mode in ("https", "normal"):
+            video_link.save_mode(mode)
+            restarted = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(restarted)
+            restarted.CONFIG_FILE = video_link.CONFIG_FILE
+            self.assertEqual(restarted.status()["mode"], mode)
+
     def test_rejects_other_modes_without_changing_selection(self):
         video_link.save_mode("https")
         with self.assertRaises(ValueError):
