@@ -49,6 +49,8 @@ progress { accent-color: var(--welcome-brand); width: 100%; height: 10px; }
 @media (max-width: 480px) { .welcome-main { padding-top: 30px; } .welcome-main h1 { font-size: 28px; } .welcome-header>div { padding: 16px 20px; } }.welcome-wifi { display: grid; gap: 8px; margin: 16px 0; }
 .welcome-wifi label { font-weight: 600; }
 .welcome-wifi input { min-height: 46px; padding: 10px 12px; border: 1px solid currentColor; border-radius: 8px; font: inherit; width: 100%; box-sizing: border-box; background: transparent; color: inherit; }
+.wifi-list { display: grid; gap: 6px; max-height: 240px; overflow-y: auto; }
+.wifi-item { min-height: 46px; padding: 10px 12px; border: 1px solid currentColor; border-radius: 8px; background: transparent; color: inherit; font: inherit; text-align: left; word-break: break-all; }
 .welcome-row { display: flex; gap: 8px; }
 .welcome-row input { flex: 1; }
 .welcome-ghost { background: transparent; color: var(--welcome-brand); }
