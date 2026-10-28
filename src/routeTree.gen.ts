@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CertificatesRouteImport } from './routes/certificates'
+import { Route as ApiPublicCertificateRecoveryRouteImport } from './routes/api/public/certificate-recovery'
 import { Route as ApiPublicCertificatesRouteImport } from './routes/api/public/certificates'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,12 @@ const CertificatesRoute = CertificatesRouteImport.update({
   path: '/certificates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCertificateRecoveryRoute =
+  ApiPublicCertificateRecoveryRouteImport.update({
+    id: '/api/public/certificate-recovery',
+    path: '/api/public/certificate-recovery',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCertificatesRoute = ApiPublicCertificatesRouteImport.update({
   id: '/api/public/certificates',
   path: '/api/public/certificates',
@@ -32,30 +39,47 @@ const ApiPublicCertificatesRoute = ApiPublicCertificatesRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/certificates': typeof CertificatesRoute
+  '/api/public/certificate-recovery': typeof ApiPublicCertificateRecoveryRoute
   '/api/public/certificates': typeof ApiPublicCertificatesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/certificates': typeof CertificatesRoute
+  '/api/public/certificate-recovery': typeof ApiPublicCertificateRecoveryRoute
   '/api/public/certificates': typeof ApiPublicCertificatesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/certificates': typeof CertificatesRoute
+  '/api/public/certificate-recovery': typeof ApiPublicCertificateRecoveryRoute
   '/api/public/certificates': typeof ApiPublicCertificatesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/certificates' | '/api/public/certificates'
+  fullPaths:
+    | '/'
+    | '/certificates'
+    | '/api/public/certificate-recovery'
+    | '/api/public/certificates'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/certificates' | '/api/public/certificates'
-  id: '__root__' | '/' | '/certificates' | '/api/public/certificates'
+  to:
+    | '/'
+    | '/certificates'
+    | '/api/public/certificate-recovery'
+    | '/api/public/certificates'
+  id:
+    | '__root__'
+    | '/'
+    | '/certificates'
+    | '/api/public/certificate-recovery'
+    | '/api/public/certificates'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CertificatesRoute: typeof CertificatesRoute
+  ApiPublicCertificateRecoveryRoute: typeof ApiPublicCertificateRecoveryRoute
   ApiPublicCertificatesRoute: typeof ApiPublicCertificatesRoute
 }
 
@@ -75,6 +99,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CertificatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/certificate-recovery': {
+      id: '/api/public/certificate-recovery'
+      path: '/api/public/certificate-recovery'
+      fullPath: '/api/public/certificate-recovery'
+      preLoaderRoute: typeof ApiPublicCertificateRecoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/certificates': {
       id: '/api/public/certificates'
       path: '/api/public/certificates'
@@ -88,6 +119,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CertificatesRoute: CertificatesRoute,
+  ApiPublicCertificateRecoveryRoute: ApiPublicCertificateRecoveryRoute,
   ApiPublicCertificatesRoute: ApiPublicCertificatesRoute,
 }
 export const routeTree = rootRouteImport
