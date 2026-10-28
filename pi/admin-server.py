@@ -369,6 +369,13 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
+    def _same_origin_blocked(self) -> bool:
+        host = self.headers.get("Host", "")
+        origin = self.headers.get("Origin")
+        return (self.headers.get("Sec-Fetch-Site") == "cross-site"
+                or (origin is not None
+                    and origin not in (f"http://{host}", f"https://{host}")))
+
     # ---- POST ----
     def do_POST(self):
         path = self.path.split("?", 1)[0]
@@ -514,6 +521,26 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._json(500, {"ok": False, "error": str(e)})
 
+        # POST /api/admin/update/restart -> nginx + Admin-Dienst neu starten
+        if path == "/api/admin/update/restart":
+            if self._same_origin_blocked():
+                return self._json(403, {"error": "Fremder Seitenaufruf nicht erlaubt."})
+            subprocess.Popen(
+                ["/bin/sh", "-c", "sleep 1; systemctl restart nginx video-token-admin"],
+                start_new_session=True,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return self._json(200, {"ok": True})
+
+        # POST /api/admin/reboot -> Pi neu starten
+        if path == "/api/admin/reboot":
+            if self._same_origin_blocked():
+                return self._json(403, {"error": "Fremder Seitenaufruf nicht erlaubt."})
+            subprocess.Popen(
+                ["/bin/sh", "-c", "sleep 1; systemctl reboot"],
+                start_new_session=True,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return self._json(200, {"ok": True})
+
         # POST /api/admin/event/<name> -> Event anlegen
         m = re.match(r"^/api/admin/event/([^/]+)$", path)
         if m:
@@ -617,6 +644,32 @@ class Handler(BaseHTTPRequestHandler):
         if not is_authed(self.headers):
             return self._json(401, {"error": "unauthorized"})
 
+        # PUT /api/admin/update-payload -> Software-Update (web/ + pi/) von GitHub
+        if put_path == "/api/admin/update-payload":
+            n = int(self.headers.get("Content-Length", "0") or "0")
+            if n <= 0 or n > 64 * 1024 * 1024:
+                return self._json(413, {"error": "Update-Paket fehlt oder ist zu groß."})
+            try:
+                payload = json.loads(self.rfile.read(n) or b"{}")
+            except Exception:
+                return self._json(400, {"error": "Ungültiges Update-Paket."})
+            staging = os.path.join(update_package.UPDATE_DIR,
+                                   "stage-" + secrets.token_urlsafe(12))
+            try:
+                info = update_package.build_staging(payload, staging)
+            except update_package.PackageError as e:
+                return self._json(400, {"error": str(e)})
+            except Exception:
+                update_package.cleanup_staging(staging)
+                return self._json(400, {"error": "Ungültiges Update-Paket."})
+            try:
+                result = update_package.apply(staging)
+            except Exception as e:
+                update_package.cleanup_staging(staging)
+                return self._json(500, {"error": "Installation fehlgeschlagen: " + str(e)})
+            update_package.save_installed_version(info.get("commit"))
+            update_package.cleanup_staging(staging)
+            return self._json(200, {"ok": True, **info, **result})
 
         # PUT /api/admin/upload-zip -> streaming ZIP-Upload in /var/lib/video-token/uploads
         if put_path == "/api/admin/upload-zip":
