@@ -20,6 +20,12 @@ describe('fixed video domain authorization', () => {
     const payload = encode(new TextEncoder().encode(JSON.stringify({ version: 1, device_id: '11111111-1111-4111-8111-111111111111', request_id: '22222222-2222-4222-8222-222222222222', purpose: 'renew' })));
     await expect(verifyRenewal({ payload, signature: encode(new Uint8Array(70)) }, encode(await crypto.subtle.exportKey('spki', key.publicKey)))).rejects.toThrow();
   });
+  it('rejects a request whose content was changed after the Pi signed it', async () => {
+    const pem = await csr(['video.gaestebuch.cloud']);
+    const lines = pem.split('\n'); const mid = Math.floor(lines.length / 2);
+    lines[mid] = (lines[mid][0] === 'A' ? 'B' : 'A') + lines[mid].slice(1);
+    await expect(inspectCsr(lines.join('\n'))).rejects.toThrow();
+  });
   it('rejects a malformed DER signature instead of truncating it', () => {
     expect(() => signatureRaw(new Uint8Array([48, 6, 2, 1, 1, 2, 1]))).toThrow();
   });

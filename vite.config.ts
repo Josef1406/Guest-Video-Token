@@ -4,7 +4,6 @@
 //     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
-import { fileURLToPath } from "node:url";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
@@ -12,12 +11,5 @@ export default defineConfig({
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
-  },
-  vite: {
-    // @peculiar/x509 needs tslib; the CJS build breaks in the published Worker bundle.
-    resolve: { alias: [
-      { find: /^tsyringe$/, replacement: fileURLToPath(new URL("./src/lib/shims/tsyringe.ts", import.meta.url)) },
-      { find: /^tsyringe-original$/, replacement: fileURLToPath(new URL("./node_modules/tsyringe/dist/esm5/index.js", import.meta.url)) },
-      { find: /^tslib$/, replacement: fileURLToPath(new URL("./node_modules/tslib/tslib.es6.mjs", import.meta.url)) }] },
   },
 });
