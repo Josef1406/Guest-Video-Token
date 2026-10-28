@@ -14,7 +14,7 @@ echo "==> Pakete installieren"
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   hostapd dnsmasq nginx-light \
-  python3 openssl ca-certificates iw wpasupplicant \
+  python3 openssl ca-certificates \
   iw rfkill wpasupplicant
 
 if ! DEBIAN_FRONTEND=noninteractive apt-get install -y raspi-gpio 2>/dev/null; then
