@@ -71,6 +71,12 @@ class ModeApiRules(unittest.TestCase):
         self.assertEqual(self.request("POST", "/api/admin/video-link", {"mode": "https"}, cookie, "https://evil.example")[0], 403)
         self.assertEqual(admin.video_link.load_mode(), "normal")
 
+    def test_guest_cannot_overwrite_saved_admin_mode(self):
+        cookie = self.login()
+        self.assertEqual(self.request("POST", "/api/admin/video-link", {"mode": "https"}, cookie)[0], 200)
+        self.assertEqual(self.request("POST", "/api/admin/video-link", {"mode": "normal"})[0], 401)
+        self.assertEqual(self.request("GET", "/api/public/video-link")[1]["mode"], "https")
+
     def test_prepare_returns_csr_but_never_certificate_success(self):
         cookie = self.login()
         self.request("POST", "/api/admin/video-link", {"mode": "https"}, cookie)

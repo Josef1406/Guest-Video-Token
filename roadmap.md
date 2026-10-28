@@ -4,6 +4,7 @@
 - [x] Link-Regeln testen und Foto → Video im Browser prüfen.
 
 # Zwei Video-Link-Modi und Zertifikatserneuerung
+- [ ] Startseite ausschließlich nach gespeicherter Admin-Auswahl anzeigen; Gastschutz und dauerhafte Auswahl prüfen.
 - [x] DNS-Anbieter ermittelt (Hetzner-Nameserver); Grenzen der Handy-Brücke und Schlüsseltransport geklärt.
 - [x] PIN-geschützte dauerhafte Moduswahl und passende Gäste-Startseiten umsetzen.
 - [x] Lokale CSR-Vorbereitung mit echtem Fortschritt und sicher auf dem Pi verbleibendem Schlüssel umsetzen.
