@@ -250,7 +250,7 @@ def apply(staging_dir: str, dest_root: str = "") -> dict:
     changed = sorted(changed_abs if not dest_root
                      else [os.path.relpath(t, dest_root) for t in changed_abs])
 
-    if not dest_root and any(t.startswith("/etc/systemd/") for t in changed):
+    if not dest_root and any(t.startswith("/etc/systemd/") for t in changed_abs):
         import subprocess
         try:
             subprocess.run(["systemctl", "daemon-reload"],
@@ -258,9 +258,11 @@ def apply(staging_dir: str, dest_root: str = "") -> dict:
         except Exception:
             pass
 
-    config_changed = [t for t in changed
+    config_changed = [t for t in changed_abs
                       if t.startswith(("/etc/hostapd/", "/etc/dnsmasq",
                                        "/etc/systemd/"))]
+    if dest_root:
+        config_changed = [os.path.relpath(t, dest_root) for t in config_changed]
     return {
         "changed": changed,
         "unchanged_count": unchanged,
