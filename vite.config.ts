@@ -15,6 +15,9 @@ export default defineConfig({
   },
   vite: {
     // @peculiar/x509 needs tslib; the CJS build breaks in the published Worker bundle.
-    resolve: { alias: [{ find: /^tslib$/, replacement: fileURLToPath(new URL("./node_modules/tslib/tslib.es6.mjs", import.meta.url)) }] },
+    resolve: { alias: [
+      { find: /^tsyringe$/, replacement: fileURLToPath(new URL("./src/lib/shims/tsyringe.ts", import.meta.url)) },
+      { find: /^tsyringe-original$/, replacement: fileURLToPath(new URL("./node_modules/tsyringe/dist/esm5/index.js", import.meta.url)) },
+      { find: /^tslib$/, replacement: fileURLToPath(new URL("./node_modules/tslib/tslib.es6.mjs", import.meta.url)) }] },
   },
 });
