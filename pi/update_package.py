@@ -238,7 +238,7 @@ def apply(staging_dir: str, dest_root: str = "") -> dict:
                     pass
         raise
 
-    changed: list[str] = []
+    changed_abs: list[str] = []
     unchanged = 0
     for _src, dst, _mode, _owner in plan:
         existed, old, _old_mode = backup[dst]
@@ -246,9 +246,9 @@ def apply(staging_dir: str, dest_root: str = "") -> dict:
                 hashlib.sha256(old).hexdigest() == _file_sha256(dst):
             unchanged += 1
         else:
-            changed.append(dst if not dest_root
-                           else os.path.relpath(dst, dest_root))
-    changed.sort()
+            changed_abs.append(dst)
+    changed = sorted(changed_abs if not dest_root
+                     else [os.path.relpath(t, dest_root) for t in changed_abs])
 
     if not dest_root and any(t.startswith("/etc/systemd/") for t in changed):
         import subprocess
