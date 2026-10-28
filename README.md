@@ -16,6 +16,7 @@ einzeln, mehrere MP4s parallel oder als ZIP mit einem ganzen Event.
 - [Installation (ein Befehl)](#installation-ein-befehl)
 - [Gäste-Ansicht](#gäste-ansicht)
 - [Admin-Web-UI](#admin-web-ui)
+- [Software-Update ohne Wartungsmodus](#software-update-ohne-wartungsmodus)
 - [Wartungs-Modus](#wartungs-modus-heim-wlan-gpio-27)
 - [Dateien direkt kopieren (WinSCP / scp)](#dateien-direkt-kopieren-winscp--scp)
 - [LED manuell testen](#led-manuell-testen)
@@ -247,6 +248,8 @@ Erreichbar unter `http://192.168.4.1/admin.html` (nach Verbindung mit `Video_GB`
 - **Videos hochladen** — mehrere MP4s parallel, Streaming-Upload mit Fortschrittsbalken
 - **ZIP-Upload** — komplette Event-ZIP hochladen, danach Vorschau der enthaltenen
   MP4s und „Als Event extrahieren" mit frei wählbarem Event-Namen
+- **Software aktualisieren** — lädt die aktuelle Version direkt von GitHub
+  und installiert sie auf dem Token (siehe nächstes Kapitel)
 - **🔒 Schützen** — `chmod 0444` + `chattr +i` auf alle Dateien eines Events
 - **🔓 Freigeben** — Sperre aufheben
 - **Löschen** — einzelne Datei oder ganzes Event
@@ -257,6 +260,34 @@ Erreichbar unter `http://192.168.4.1/admin.html` (nach Verbindung mit `Video_GB`
 sudo nano /etc/video-token/admin.pin
 sudo systemctl restart video-token-admin
 ```
+
+---
+
+## Software-Update ohne Wartungsmodus
+
+Der Token kann sich selbst aktualisieren — ganz ohne GPIO-Brücke und SSH:
+
+1. Mit `Video_GB` verbinden (das Handy behält sein Mobilfunk-Internet).
+2. `http://192.168.4.1/admin.html` öffnen, PIN eingeben.
+3. Karte **„Software aktualisieren"** → **Jetzt aktualisieren**.
+
+Die Admin-Seite lädt die aktuelle Version direkt von GitHub (über das Handy),
+überträgt sie PIN-geschützt an den Token, und der Token baut sie selbst ein:
+Webseiten (`web/`), Skripte und Konfigurationen (`pi/`). Danach starten die
+Dienste neu und die Seite lädt automatisch wieder.
+
+- Videos, Admin-PIN, Upload-Secret und WLAN-Einstellungen bleiben erhalten.
+- Jede Datei wird gegen die GitHub-Prüfsumme geprüft; bei einem Fehler wird
+  der alte Stand wiederhergestellt (Rollback).
+- Nach Änderungen an WLAN-/Boot-Konfiguration fordert die Seite einen
+  Neustart des Pi (**Pi neu starten**).
+- **Nicht** Teil des Updates: Betriebssystem-Pakete (`apt upgrade`). Dafür
+  bleibt der Wartungsmodus (unten) die Rückfallebene.
+
+Einmalige Voraussetzung: Diese Funktion muss selbst einmal installiert
+werden — im Wartungsmodus `sudo git pull && sudo bash pi/install.sh`
+ausführen. Danach wird der Wartungsmodus für normale Updates nicht mehr
+gebraucht.
 
 ---
 

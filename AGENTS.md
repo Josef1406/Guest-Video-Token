@@ -16,3 +16,4 @@
 - Render the offline welcome page in an explicitly disconnected iframe preview; the hosted preview must never pretend to control the real Pi.
 - Guest welcome pages read the saved Pi mode on load and when revisited, hiding both workflows until a valid result arrives; only PIN-authenticated Admin writes may select the mode, preventing stale or guest-chosen behavior.
 - Guest pages poll certificate status and reveal HTTPS camera instructions only for server-confirmed readiness with a future expiry; this separates certificate activation from the persistent Admin mode.
+- Self-updates run through the PIN-protected admin UI: the phone downloads `web/` and `pi/` files from GitHub and `pi/update_package.py` validates paths plus git-blob checksums, applies with rollback, and restarts services; never use apt or the maintenance mode for app updates.
