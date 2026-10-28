@@ -42,12 +42,12 @@
   $('home-retry').addEventListener('click', async () => { try { show(await call('/api/public/home-wifi/renew', {})); } catch (e) { msg.textContent = e.message; } });
   $('home-change').addEventListener('click', () => { form.dataset.edit = '1'; form.hidden = false; saved.hidden = true; });
   $('home-scan').addEventListener('click', async () => {
-    msg.textContent = 'Suche WLANs…';
+    msg.textContent = 'Suche WLANs… Achtung: Ohne USB-Stick kann „Video_GB" kurz verschwinden – danach bitte neu verbinden und Seite neu laden.';
     try {
       const { networks } = await call('/api/public/home-wifi/scan', {});
       $('home-ssid-list').replaceChildren(...networks.map(n => Object.assign(document.createElement('option'), { value: n })));
       msg.textContent = networks.length ? networks.length + ' WLANs gefunden – Feld antippen zum Auswählen.' : 'Keine WLANs gefunden. Name bitte eintippen.';
-    } catch (e) { msg.textContent = e.message; }
+    } catch (e) { msg.textContent = e.message + ' Falls „Video_GB" weg ist: kurz warten, neu verbinden, Seite neu laden.'; }
   });
   refresh();
 })();
