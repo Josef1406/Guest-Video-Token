@@ -38,13 +38,17 @@ class UpdateApiRules(unittest.TestCase):
         admin.SESSIONS.clear()
         self.applied = []
         self.saved_versions = []
+
+        def fake_apply(staging, dest_root=""):
+            listing = sorted(str(p.relative_to(staging))
+                             for p in Path(staging).rglob("*") if p.is_file())
+            self.applied.append((staging, listing))
+            return {"changed": ["/var/www/video-token/index.html"],
+                    "unchanged_count": 1, "skipped": [],
+                    "config_changed": [], "needs_reboot": False}
         self.patchers = [
             patch.object(admin.update_package, "UPDATE_DIR", str(self.updates)),
-            patch.object(admin.update_package, "apply",
-                         lambda staging, dest_root="": self.applied.append(staging) or {
-                             "changed": ["/var/www/video-token/index.html"],
-                             "unchanged_count": 1, "skipped": [],
-                             "config_changed": [], "needs_reboot": False}),
+            patch.object(admin.update_package, "apply", fake_apply),
             patch.object(admin.update_package, "save_installed_version",
                          lambda commit: self.saved_versions.append(commit)),
         ]
@@ -97,9 +101,9 @@ class UpdateApiRules(unittest.TestCase):
         self.assertEqual(result["files"], 2)
         self.assertEqual(result["commit"], "abc1234def5678")
         self.assertEqual(len(self.applied), 1)
-        staging = Path(self.applied[0])
-        self.assertTrue((staging / "web" / "index.html").is_file())
-        self.assertTrue((staging / "pi" / "admin-server.py").is_file())
+        staging, listing = self.applied[0]
+        self.assertIn(os.path.join("web", "index.html"), listing)
+        self.assertIn(os.path.join("pi", "admin-server.py"), listing)
         self.assertEqual(self.saved_versions, ["abc1234def5678"])
         self.assertFalse(self.updates.exists())  # Staging wieder aufgeräumt
 
