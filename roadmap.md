@@ -16,6 +16,11 @@
 - [ ] Echte Test-Ausstellung und veröffentlichte Hosting-Laufzeit prüfen — wartet auf Eigentümerfreigabe und Veröffentlichungsauftrag; Produktionsausstellung bleibt standardmäßig gesperrt.
 - [ ] Echte Erneuerung und direkten Cloud-QR-Kamera-Scan am Pi/iPhone prüfen — wartet auf Pi-Update, echte Gerätefreigabe und Vor-Ort-Test.
 
+# Drei Video-Link-Modi (Normal / Cloud / Lokaler QR)
+- [x] Drei Modi im Admin-Bereich umsetzen, Gast sieht nur den gewählten Weg; Tests bestanden.
+- [x] Am echten Token bestätigt (Josef, 28.10.2026): Modus **Normal** und **Lokaler QR** funktionieren am iPhone.
+- [ ] Modus **Cloud** am echten Token prüfen — wartet auf die Weiterleitung in der Cloud-Videoseite (Projekt „Memory Maker Station Rund", Route `/v/$event/$file`: fehlt das Video in der Cloud → redirect zu `http://192.168.4.1/v/<event>/<datei>`).
+
 # Software-Update ohne Wartungsmodus
 - [x] Update-Knopf in der Admin-Seite: lädt `web/` + `pi/` von GitHub über das Handy-Internet und überträgt sie PIN-geschützt an den Token.
 - [x] Token-seitige Prüfung (Pfad-Whitelist, Git-Prüfsummen, Rollback), Installation an die Installer-Pfade, Versionsanzeige, Neustart-/Reboot-Endpunkte.
