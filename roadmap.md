@@ -10,7 +10,7 @@
 - [x] PIN-geschützte dauerhafte Moduswahl und passende Gäste-Startseiten umsetzen.
 - [x] Lokale CSR-Vorbereitung mit echtem Fortschritt und sicher auf dem Pi verbleibendem Schlüssel umsetzen.
 - [x] Beide Modi, PIN-Schutz und Fehlerfälle testen; Installation und Dokumentation aktualisieren.
-- [ ] Domain-autorisierte Online-Ausstellung, Zertifikatsimport/-prüfung und HTTPS-Aktivierung integrieren — Hetzner-Zugang laut Eigentümer vorhanden; wartet auf sichere Autorisierung und Einrichtung des Ausstellungsdienstes.
+- [ ] Domain-autorisierte Online-Ausstellung, Zertifikatsimport/-prüfung und HTTPS-Aktivierung integrieren — Hetzner-Schlüssel sicher gespeichert; Lovable Cloud aktiviert; gerätegebundene Freigabe, Ausstellung und Handy-Übertragung umsetzen.
 - [ ] Echte Erneuerung und direkten Cloud-QR-Kamera-Scan am Pi/iPhone prüfen — wartet auf Domain-Freigabe und HTTPS-Einrichtung.
 
 # Software-Update ohne Wartungsmodus
