@@ -12,7 +12,7 @@
 - [x] Beide Modi, PIN-Schutz und Fehlerfälle testen; Installation und Dokumentation aktualisieren.
 - [x] Hetzner-Zugang und korrekte DNS-Zone ausschließlich lesend prüfen; Zugang erfolgreich, keine DNS-Änderungen vorgenommen.
 - [x] Gerätegebundene Eigentümerfreigabe, signierte Handy-Anfragen, persistente Staging-Ausstellung, geprüften Pi-Import mit nginx-Rollback und Gästeablauf implementieren; 32 Pi-, 15 Web- und 4 Signaturtests sowie öffentlicher Browserablauf geprüft.
-- [ ] Eigentümerkonto anmelden und nach verifizierter Zuordnung autorisieren — wartet auf Josef-Anmeldung auf der Online-Zertifikatsseite; kein passendes Auth-Konto vorhanden, automatische Erstbenutzerfreigabe bleibt gesperrt.
+- [x] Eigentümerkonto anmelden und nach verifizierter Zuordnung autorisieren — Josef-Konto über verifizierte Lovable-Zuordnung und bestätigte Anmeldung geprüft und gezielt als Zertifikatsoperator freigegeben; keine automatische Erstbenutzerfreigabe.
 - [ ] Echte Test-Ausstellung und veröffentlichte Hosting-Laufzeit prüfen — wartet auf Eigentümerfreigabe und Veröffentlichungsauftrag; Produktionsausstellung bleibt standardmäßig gesperrt.
 - [ ] Echte Erneuerung und direkten Cloud-QR-Kamera-Scan am Pi/iPhone prüfen — wartet auf Pi-Update, echte Gerätefreigabe und Vor-Ort-Test.
 
