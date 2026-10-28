@@ -1,5 +1,6 @@
-import 'reflect-metadata';
-import { Pkcs10CertificateRequest, SubjectAlternativeNameExtension } from '@peculiar/x509';
+import { AsnConvert } from '@peculiar/asn1-schema';
+import { CertificationRequest } from '@peculiar/asn1-csr';
+import { Extensions, SubjectAlternativeName } from '@peculiar/asn1-x509';
 import { z } from 'zod';
 
 export const certificateDomain = 'video.gaestebuch.cloud';
@@ -13,17 +14,25 @@ export function encode(data: ArrayBuffer | Uint8Array): string {
 export function decode(data: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(data.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 }
+// Parsed with the low-level ASN.1 packages: @peculiar/x509 pulls in tsyringe, which crashes the published server at startup.
 export async function inspectCsr(pem: string) {
-  const csr = new Pkcs10CertificateRequest(pem);
-  if (!await csr.verify(crypto)) throw new Error('Signatur der Pi-Anfrage ungültig.');
-  const san = csr.getExtension('2.5.29.17');
-  if (!(san instanceof SubjectAlternativeNameExtension)) throw new Error('Domain fehlt.');
-  const names = san.names.items;
-  if (names.length !== 1 || names[0]?.type !== 'dns' || names[0]?.value !== certificateDomain) throw new Error('Nur die Video-Domain ist erlaubt.');
-  if (csr.extensions.length !== 1) throw new Error('Zusätzliche Zertifikatsrechte sind nicht erlaubt.');
-  const key = await csr.publicKey.export({ name: 'ECDSA', namedCurve: 'P-256' }, ['verify'], crypto);
-  if ((key.algorithm as EcKeyAlgorithm).namedCurve !== 'P-256') throw new Error('Falscher Schlüsseltyp.');
-  return { spki: encode(csr.publicKey.rawData), der: encode(csr.rawData), key };
+  const body = pem.replace(/-----(BEGIN|END) CERTIFICATE REQUEST-----/g, '').replace(/\s+/g, '');
+  if (!/^[A-Za-z0-9+/]+=*$/.test(body)) throw new Error('Pi-Anfrage ungültig.');
+  const der = Uint8Array.from(atob(body), c => c.charCodeAt(0));
+  const csr = AsnConvert.parse(der, CertificationRequest);
+  if (csr.signatureAlgorithm.algorithm !== '1.2.840.10045.4.3.2') throw new Error('Falscher Signaturtyp.');
+  const info = csr.certificationRequestInfo;
+  if (info.subjectPKInfo.algorithm.algorithm !== '1.2.840.10045.2.1') throw new Error('Falscher Schlüsseltyp.');
+  const spki = new Uint8Array(AsnConvert.serialize(info.subjectPKInfo));
+  const key = await crypto.subtle.importKey('spki', spki, { name: 'ECDSA', namedCurve: 'P-256' }, true, ['verify']);
+  const signed = new Uint8Array(AsnConvert.serialize(info));
+  if (!await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, signatureRaw(new Uint8Array(csr.signature)), signed)) throw new Error('Signatur der Pi-Anfrage ungültig.');
+  if (info.attributes.length !== 1 || info.attributes[0].type !== '1.2.840.113549.1.9.14' || info.attributes[0].values.length !== 1) throw new Error('Zusätzliche Zertifikatsrechte sind nicht erlaubt.');
+  const extensions = AsnConvert.parse(info.attributes[0].values[0], Extensions);
+  if (extensions.length !== 1 || extensions[0].extnID !== '2.5.29.17') throw new Error('Zusätzliche Zertifikatsrechte sind nicht erlaubt.');
+  const names = AsnConvert.parse(extensions[0].extnValue.buffer, SubjectAlternativeName);
+  if (names.length !== 1 || names[0].dNSName !== certificateDomain) throw new Error('Nur die Video-Domain ist erlaubt.');
+  return { spki: encode(spki), der: encode(der), key };
 }
 
 // OpenSSL produces DER ECDSA signatures; WebCrypto expects fixed-width r||s.

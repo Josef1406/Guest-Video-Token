@@ -20,3 +20,4 @@
 - Guest welcome pages read the saved Pi mode on load and when revisited, hiding both workflows until a valid result arrives; only PIN-authenticated Admin writes may select the mode, preventing stale or guest-chosen behavior.
 - Guest pages poll certificate status and reveal HTTPS camera instructions only for server-confirmed readiness with a future expiry; this separates certificate activation from the persistent Admin mode.
 - Self-updates run through the PIN-protected admin UI: the phone downloads `web/` and `pi/` files from GitHub and `pi/update_package.py` validates paths plus git-blob checksums, applies with rollback, and restarts services; never use apt or the maintenance mode for app updates.
+- Parse device CSRs with the low-level @peculiar/asn1-* packages, not @peculiar/x509 (its tsyringe dependency crashes the published Worker at startup); x509 is a dev-only test helper.
