@@ -86,3 +86,14 @@ class CloudDomainDns(unittest.TestCase):
         self.assertNotIn("address=/#/", conf)
         self.assertNotIn("address=/video.gaestebuch.cloud/", conf)
         self.assertIn("address=/captive.apple.com/192.168.4.1", conf)
+
+
+class ThreeGuestModes(unittest.TestCase):
+    def test_cloud_and_local_modes_persist_and_use_token_address(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d, patch.object(video_link, "CONFIG_FILE", Path(d) / "m.json"), \
+             patch.object(video_link, "apply_dns"):
+            for mode in ("cloud", "local", "normal"):
+                video_link.save_mode(mode)
+                self.assertEqual(video_link.load_mode(), mode)
+                self.assertEqual(video_link.status()["base_url"], "http://192.168.4.1")
