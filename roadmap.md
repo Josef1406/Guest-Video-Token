@@ -12,3 +12,8 @@
 - [x] Beide Modi, PIN-Schutz und Fehlerfälle testen; Installation und Dokumentation aktualisieren.
 - [ ] Domain-autorisierte Online-Ausstellung, Zertifikatsimport/-prüfung und HTTPS-Aktivierung integrieren — Hetzner-Zugang laut Eigentümer vorhanden; wartet auf sichere Autorisierung und Einrichtung des Ausstellungsdienstes.
 - [ ] Echte Erneuerung und direkten Cloud-QR-Kamera-Scan am Pi/iPhone prüfen — wartet auf Domain-Freigabe und HTTPS-Einrichtung.
+
+# Software-Update ohne Wartungsmodus
+- [x] Update-Knopf in der Admin-Seite: lädt `web/` + `pi/` von GitHub über das Handy-Internet und überträgt sie PIN-geschützt an den Token.
+- [x] Token-seitige Prüfung (Pfad-Whitelist, Git-Prüfsummen, Rollback), Installation an die Installer-Pfade, Versionsanzeige, Neustart-/Reboot-Endpunkte.
+- [x] Tests (Paketprüfung, Installation, HTTP-Endpunkte) und Browser-Durchlauf mit simuliertem GitHub; README und Installer aktualisiert.
