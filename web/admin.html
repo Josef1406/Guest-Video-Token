@@ -4,9 +4,16 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Video-Token · Admin</title>
+<meta name="description" content="PIN-geschützte Verwaltung von Video-Token, Video-Link-Modus und lokalen Zertifikatsanfragen." />
+<meta property="og:title" content="Video-Token · Admin" />
+<meta property="og:description" content="Videos und Token-Einstellungen PIN-geschützt verwalten." />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
 <link rel="stylesheet" href="/assets/styles.css" />
 <style>
-  .card { background:#161b22; border:1px solid #30363d; border-radius:12px; padding:16px; margin:12px 0; }
+  :root { --admin-surface:#161b22; --admin-ink:#e6edf3; }
+  .container { max-width:1100px; padding:24px 16px; margin:auto; }
+  .card { background:var(--admin-surface); color:var(--admin-ink); border:1px solid #30363d; border-radius:8px; padding:16px; margin:12px 0; }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
   .kpi  { font-size:2rem; font-weight:700; }
   .muted{ color:#8b949e; font-size:.9rem; }

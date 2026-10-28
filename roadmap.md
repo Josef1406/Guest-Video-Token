@@ -4,7 +4,9 @@
 - [x] Link-Regeln testen und Foto → Video im Browser prüfen.
 
 # Zwei Video-Link-Modi und Zertifikatserneuerung
-- [ ] Voraussetzungen für sichere Zertifikatsausstellung und Handy-Übertragung klären (DNS-Anbieter und Domain-Zugriff fehlen).
-- [ ] PIN-geschützte Moduswahl und passende Gäste-Startseiten umsetzen.
-- [ ] Sichere HTTPS-Einrichtung und echte Zertifikatserneuerung mit Fortschritt integrieren.
-- [ ] Beide Modi und Fehlerfälle testen, Installation und Dokumentation aktualisieren.
+- [x] DNS-Anbieter ermittelt (Hetzner-Nameserver); Grenzen der Handy-Brücke und Schlüsseltransport geklärt.
+- [x] PIN-geschützte dauerhafte Moduswahl und passende Gäste-Startseiten umsetzen.
+- [x] Lokale CSR-Vorbereitung mit echtem Fortschritt und sicher auf dem Pi verbleibendem Schlüssel umsetzen.
+- [x] Beide Modi, PIN-Schutz und Fehlerfälle testen; Installation und Dokumentation aktualisieren.
+- [ ] Domain-autorisierte Online-Ausstellung, Zertifikatsimport/-prüfung und HTTPS-Aktivierung integrieren — blockiert durch fehlenden Domain-Verwalter/DNS-Zugriff.
+- [ ] Echte Erneuerung und direkten Cloud-QR-Kamera-Scan am Pi/iPhone prüfen — wartet auf Domain-Freigabe und HTTPS-Einrichtung.
