@@ -12,4 +12,8 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    // @peculiar/x509 needs tslib; the CJS build breaks in the published Worker bundle.
+    resolve: { alias: { tslib: "tslib/tslib.es6.mjs" } },
+  },
 });
