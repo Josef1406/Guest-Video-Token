@@ -860,6 +860,7 @@ class Handler(BaseHTTPRequestHandler):
         self._json(404, {"error": "not found"})
 
 def main():
+    video_link.apply_dns(video_link.load_mode())
     home_uplink.background()
     ThreadingHTTPServer(("127.0.0.1", 8080), Handler).serve_forever()
 
