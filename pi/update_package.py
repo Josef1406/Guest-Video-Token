@@ -171,30 +171,31 @@ def apply(staging_dir: str, dest_root: str = "") -> dict:
     if not os.path.isdir(web_src):
         raise PackageError("Paket enthält web/ nicht mehr.")
 
-    plan: list[tuple[str, str, int, str | None]] = []
+    plan: list[tuple[str, str, int, str | None, str]] = []
     for root, _dirs, names in os.walk(web_src):
         for name in names:
             src = os.path.join(root, name)
             target = os.path.join(WEB_DEST, os.path.relpath(src, web_src))
-            plan.append((src, d(target), 0o644, WEB_OWNER))
+            plan.append((src, d(target), 0o644, WEB_OWNER, target))
     for rel, (target, mode) in PI_INSTALL.items():
         src = os.path.join(staging_dir, rel)
         if not os.path.isfile(src):
             if rel == REQUIRED_PATHS[1]:
                 raise PackageError("Paket enthält " + rel + " nicht mehr.")
             continue
-        plan.append((src, d(target), mode, None))
+        plan.append((src, d(target), mode, None, target))
     for rel, target in CONFIG_INSTALL.items():
         src = os.path.join(staging_dir, rel)
         if os.path.isfile(src):
-            plan.append((src, d(target), 0o644, None))
+            plan.append((src, d(target), 0o644, None, target))
     systemd_src = os.path.join(staging_dir, "pi", "systemd")
     if os.path.isdir(systemd_src):
         for root, _dirs, names in os.walk(systemd_src):
             for name in names:
                 src = os.path.join(root, name)
                 rel = os.path.relpath(src, systemd_src)
-                plan.append((src, d(os.path.join(SYSTEMD_DEST, rel)), 0o644, None))
+                target = os.path.join(SYSTEMD_DEST, rel)
+                plan.append((src, d(target), 0o644, None, target))
 
     skipped: list[str] = []
     pi_src = os.path.join(staging_dir, "pi")
@@ -209,7 +210,7 @@ def apply(staging_dir: str, dest_root: str = "") -> dict:
 
     backup: dict[str, tuple[bool, bytes | None, int | None]] = {}
     try:
-        for _src, dst, _mode, _owner in plan:
+        for _src, dst, _mode, _owner, _target in plan:
             existed = os.path.isfile(dst)
             old = None
             old_mode = None
@@ -218,7 +219,7 @@ def apply(staging_dir: str, dest_root: str = "") -> dict:
                     old = f.read()
                 old_mode = os.stat(dst).st_mode & 0o777
             backup[dst] = (existed, old, old_mode)
-        for src, dst, mode, owner in plan:
+        for src, dst, mode, owner, _target in plan:
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copyfile(src, dst)
             os.chmod(dst, mode)
@@ -238,19 +239,21 @@ def apply(staging_dir: str, dest_root: str = "") -> dict:
                     pass
         raise
 
-    changed_abs: list[str] = []
+    changed_set: set[str] = set()
     unchanged = 0
-    for _src, dst, _mode, _owner in plan:
+    for _src, dst, _mode, _owner, target in plan:
         existed, old, _old_mode = backup[dst]
         if existed and old is not None and \
                 hashlib.sha256(old).hexdigest() == _file_sha256(dst):
             unchanged += 1
         else:
-            changed_abs.append(dst)
-    changed = sorted(changed_abs if not dest_root
-                     else [os.path.relpath(t, dest_root) for t in changed_abs])
+            changed_set.add(dst)
 
-    if not dest_root and any(t.startswith("/etc/systemd/") for t in changed_abs):
+    changed_targets = [target for _s, dst_p, _m, _o, target in plan
+                       if dst_p in changed_set]
+
+    if not dest_root and any(t.startswith("/etc/systemd/")
+                             for t in changed_targets):
         import subprocess
         try:
             subprocess.run(["systemctl", "daemon-reload"],
@@ -258,11 +261,11 @@ def apply(staging_dir: str, dest_root: str = "") -> dict:
         except Exception:
             pass
 
-    config_changed = [t for t in changed_abs
-                      if t.startswith(("/etc/hostapd/", "/etc/dnsmasq",
-                                       "/etc/systemd/"))]
-    if dest_root:
-        config_changed = [os.path.relpath(t, dest_root) for t in config_changed]
+    config_changed = sorted(t for t in changed_targets
+                            if t.startswith(("/etc/hostapd/", "/etc/dnsmasq",
+                                             "/etc/systemd/")))
+    changed = sorted(changed_set if not dest_root
+                     else [os.path.relpath(t, dest_root) for t in changed_set])
     return {
         "changed": changed,
         "unchanged_count": unchanged,
