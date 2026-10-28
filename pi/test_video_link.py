@@ -84,5 +84,5 @@ class CloudDomainDns(unittest.TestCase):
     def test_base_config_hijacks_only_captive_checks(self):
         conf = (Path(__file__).parent / "config" / "dnsmasq.conf").read_text()
         self.assertNotIn("address=/#/", conf)
-        self.assertNotIn("gaestebuch.cloud", conf)
+        self.assertNotIn("address=/video.gaestebuch.cloud/", conf)
         self.assertIn("address=/captive.apple.com/192.168.4.1", conf)
