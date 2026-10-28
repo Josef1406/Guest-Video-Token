@@ -19,4 +19,6 @@
 # Software-Update ohne Wartungsmodus
 - [x] Update-Knopf in der Admin-Seite: lädt `web/` + `pi/` von GitHub über das Handy-Internet und überträgt sie PIN-geschützt an den Token.
 - [x] Token-seitige Prüfung (Pfad-Whitelist, Git-Prüfsummen, Rollback), Installation an die Installer-Pfade, Versionsanzeige, Neustart-/Reboot-Endpunkte.
-- [x] Tests (Paketprüfung, Installation, HTTP-Endpunkte) und Browser-Durchlauf mit simuliertem GitHub; README und Installer aktualisiert.
+- [x] Tests (Paketprüfung, Installation, HTTP-Endpunkte) und Browser-Durchlauf mit simuliertem GitHub; README und Installer aktualisiert.- [x] Heim-WLAN-Verbindungsseite mit automatischer Zertifikatserneuerung über zweites WLAN-Modul
+- [ ] Am echten Pi mit USB-WLAN-Stick testen (wartet auf Hardware/Josef)
+- [ ] Echte Ausstellung (production) freischalten nach erfolgreichem Test
