@@ -49,7 +49,7 @@
 <p class="welcome-note">Der Token nutzt dein WLAN nur, um sein Zertifikat automatisch zu erneuern. Du bleibst dabei mit Video_GB verbunden.</p>
 <label for="home-ssid">Heim-WLAN</label>
 <div class="welcome-row"><input id="home-ssid" list="home-ssid-list" required maxlength="32" placeholder="WLAN-Name" /><button id="home-scan" class="welcome-btn welcome-ghost" type="button">Suchen</button></div>
-<datalist id="home-ssid-list"></datalist>
+<div id="home-ssid-list" class="wifi-list" hidden></div>
 <label for="home-psk">Passwort</label>
 <input id="home-psk" type="password" maxlength="63" placeholder="WLAN-Passwort" />
 <button id="home-connect" class="welcome-btn welcome-wide" type="submit">Verbinden &amp; Zertifikat erneuern</button>

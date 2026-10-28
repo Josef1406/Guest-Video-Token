@@ -45,8 +45,21 @@
     msg.textContent = 'Suche WLANs… Achtung: Ohne USB-Stick kann „Video_GB" kurz verschwinden – danach bitte neu verbinden und Seite neu laden.';
     try {
       const { networks } = await call('/api/public/home-wifi/scan', {});
-      $('home-ssid-list').replaceChildren(...networks.map(n => Object.assign(document.createElement('option'), { value: n })));
-      msg.textContent = networks.length ? networks.length + ' WLANs gefunden – Feld antippen zum Auswählen.' : 'Keine WLANs gefunden. Name bitte eintippen.';
+      const list = $('home-ssid-list');
+      list.replaceChildren(...networks.map(n => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'wifi-item';
+        item.textContent = n;
+        item.addEventListener('click', () => {
+          $('home-ssid').value = n;
+          list.hidden = true;
+          $('home-psk').focus();
+        });
+        return item;
+      }));
+      list.hidden = !networks.length;
+      msg.textContent = networks.length ? networks.length + ' WLANs gefunden – dein WLAN antippen.' : 'Keine WLANs gefunden. Name bitte eintippen.';
     } catch (e) { msg.textContent = e.message + ' Falls „Video_GB" weg ist: kurz warten, neu verbinden, Seite neu laden.'; }
   });
   refresh();
