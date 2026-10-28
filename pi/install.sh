@@ -14,7 +14,7 @@ echo "==> Pakete installieren"
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   hostapd dnsmasq nginx-light \
-  python3 openssl ca-certificates \
+  python3 openssl ca-certificates iw wpasupplicant \
   iw rfkill wpasupplicant
 
 if ! DEBIAN_FRONTEND=noninteractive apt-get install -y raspi-gpio 2>/dev/null; then
@@ -74,6 +74,7 @@ install -m 0755 "$REPO_DIR/pi-unlock-videos.sh"  /usr/local/sbin/pi-unlock-video
 install -m 0755 "$REPO_DIR/admin-server.py"      /usr/local/sbin/admin-server.py
 install -m 0644 "$REPO_DIR/video_link.py"        /usr/local/sbin/video_link.py
 install -m 0644 "$REPO_DIR/certificate_bridge.py" /usr/local/sbin/certificate_bridge.py
+install -m 0644 "$REPO_DIR/home_uplink.py" /usr/local/sbin/home_uplink.py
 install -m 0644 "$REPO_DIR/update_package.py"    /usr/local/sbin/update_package.py
 install -m 0755 "$REPO_DIR/boot-mode.sh"         /usr/local/sbin/video-token-bootmode
 
