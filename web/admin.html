@@ -414,6 +414,125 @@ document.getElementById("btnZipDiscard").addEventListener("click", async () => {
   document.getElementById("zipProgress").innerHTML = "";
 });
 
+// ---------- Software-Update ----------
+const GH_REPO = "Josef1406/Guest-Video-Token";
+const GH_BRANCH = "main";
+const ghSkipPath = p => p.startsWith("pi/__pycache__/") || p.endsWith(".pyc") || p.startsWith("pi/test_");
+
+function setUpdateMsg(text, isErr) {
+  const el = document.getElementById("updateMsg");
+  el.textContent = text || "";
+  el.style.color = isErr ? "#f85149" : "";
+}
+
+function renderInstalledUpdate(v) {
+  const el = document.getElementById("updateInstalled");
+  if (!v || !v.commit) { el.textContent = "Installierte Version: unbekannt"; return; }
+  const when = v.applied_at ? new Date(v.applied_at * 1000).toLocaleString() : "";
+  el.textContent = `Installierte Version: ${v.commit.slice(0, 7)}${when ? " · " + when : ""}`;
+}
+
+function bufToB64(buf) {
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+function xhrPutJson(url, bodyObj, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText || "{}")); }
+        catch (e) { reject(new Error("Ungültige Antwort des Tokens")); }
+      } else reject(new Error("HTTP " + xhr.status + ": " + (xhr.responseText || "").slice(0, 200)));
+    };
+    xhr.onerror = () => reject(new Error("Netzwerkfehler beim Übertragen zum Token"));
+    xhr.open("PUT", url);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.send(JSON.stringify(bodyObj));
+  });
+}
+
+async function restartServicesAndReload() {
+  try { await fetch("/api/admin/update/restart", { method: "POST", credentials: "same-origin" }); } catch (e) {}
+  setUpdateMsg("Dienste starten neu — diese Seite lädt gleich automatisch neu (danach bitte PIN neu eingeben)…");
+  const deadline = Date.now() + 90000;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const r = await fetch("/api/public/video-link", { cache: "no-store" });
+      if (r.ok) { location.reload(); return; }
+    } catch (e) {}
+  }
+  setUpdateMsg("Dienste starten neu. Bitte diese Seite in etwa 30 Sekunden neu laden.", true);
+}
+
+document.getElementById("btnUpdate").addEventListener("click", async () => {
+  const btn = document.getElementById("btnUpdate");
+  const bar = document.getElementById("updateProgress");
+  btn.disabled = true; bar.hidden = false; bar.removeAttribute("value");
+  try {
+    setUpdateMsg("Suche neueste Version auf GitHub…");
+    const infoRes = await fetch(`https://api.github.com/repos/${GH_REPO}/commits/${GH_BRANCH}`);
+    if (!infoRes.ok) throw new Error("GitHub nicht erreichbar (HTTP " + infoRes.status + "). Hat das Handy gerade Internet?");
+    const info = await infoRes.json();
+    const sha = info.sha;
+    const short = sha.slice(0, 7);
+    const installed = window._installedUpdate;
+    if (installed && installed.commit === sha) {
+      setUpdateMsg(`Bereits auf dem neuesten Stand (${short}).`);
+      bar.hidden = true; btn.disabled = false; return;
+    }
+    setUpdateMsg(`Lade Update ${short} von GitHub…`);
+    const treeRes = await fetch(`https://api.github.com/repos/${GH_REPO}/git/trees/${sha}?recursive=1`);
+    if (!treeRes.ok) throw new Error("GitHub-Dateiliste nicht erreichbar (HTTP " + treeRes.status + ").");
+    const tree = (await treeRes.json()).tree || [];
+    const blobs = new Map(tree.filter(t => t.type === "blob").map(t => [t.path, t.sha]));
+    const paths = [...blobs.keys()].filter(p => (p.startsWith("web/") || p.startsWith("pi/")) && !ghSkipPath(p));
+    if (!paths.length) throw new Error("Keine Update-Dateien gefunden.");
+    const files = {};
+    for (let i = 0; i < paths.length; i++) {
+      const p = paths[i];
+      setUpdateMsg(`Lade Datei ${i + 1} von ${paths.length} von GitHub…`);
+      const r = await fetch(`https://raw.githubusercontent.com/${GH_REPO}/${sha}/${p}`);
+      if (!r.ok) throw new Error("Download fehlgeschlagen: " + p);
+      files[p] = { b64: bufToB64(await r.arrayBuffer()), sha: blobs.get(p) };
+    }
+    setUpdateMsg("Übertrage Update zum Token…");
+    const res = await xhrPutJson("/api/admin/update-payload", { sha, files }, f => { bar.value = f; });
+    window._installedUpdate = { commit: res.commit, applied_at: Math.floor(Date.now() / 1000) };
+    renderInstalledUpdate(window._installedUpdate);
+    const parts = [];
+    if (res.changed && res.changed.length) parts.push(res.changed.length + " Datei(en) aktualisiert");
+    if (res.unchanged_count) parts.push(res.unchanged_count + " unverändert");
+    if (res.skipped && res.skipped.length) parts.push(res.skipped.length + " übersprungen");
+    setUpdateMsg(`Update ${short} installiert (${parts.join(", ") || "ohne Änderungen"}).`
+      + (res.needs_reboot
+          ? " Wichtig: Pi neu starten (roter Knopf), damit WLAN-Änderungen greifen. Dienste starten jetzt neu…"
+          : " Dienste starten jetzt neu…"));
+    bar.value = 1;
+    await restartServicesAndReload();
+  } catch (e) {
+    setUpdateMsg(e.message || "Update fehlgeschlagen.", true);
+    bar.hidden = true;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("btnRestart").addEventListener("click", restartServicesAndReload);
+
+document.getElementById("btnReboot").addEventListener("click", async () => {
+  if (!confirm("Pi wirklich neu starten? Die WLAN-Verbindung „Video_GB“ bricht kurz ab.")) return;
+  try { await fetch("/api/admin/reboot", { method: "POST", credentials: "same-origin" }); } catch (e) {}
+  setUpdateMsg("Pi startet neu — das WLAN „Video_GB“ erscheint in etwa einer Minute wieder.");
+});
+
 function showLogin(err){
   document.getElementById("login").hidden=false;
   document.getElementById("dashboard").hidden=true;
