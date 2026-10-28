@@ -109,6 +109,7 @@ export async function advanceOrder(id: string, secrets: Secrets) {
     const authorization = order.authorizations[0];
     if (!authorization) throw new Error('Domainprüfung fehlt.');
     const challenge = authorization.findChallenge('dns-01');
+    if (!challenge) throw new Error('DNS-Prüfung fehlt.');
     const value = await challenge.digestToken();
     if (!job.txt_value) { await patch({ txt_value: value }); return; }
     if (job.txt_value !== value) throw new Error('Prüfauftrag wurde verändert.');
