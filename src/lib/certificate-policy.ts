@@ -1,4 +1,7 @@
-import { AsnConvert } from '@peculiar/asn1-schema';\nimport { CertificationRequest } from '@peculiar/asn1-csr';\nimport { Extensions, SubjectAlternativeName } from '@peculiar/asn1-x509';\nimport { z } from 'zod';
+import { AsnConvert } from '@peculiar/asn1-schema';
+import { CertificationRequest } from '@peculiar/asn1-csr';
+import { Extensions, SubjectAlternativeName } from '@peculiar/asn1-x509';
+import { z } from 'zod';
 
 export const certificateDomain = 'video.gaestebuch.cloud';
 export const enrollmentSchema = z.object({ version: z.literal(1), device_id: z.string().uuid(), csr: z.string().min(100).max(8192) }).strict();
