@@ -50,7 +50,7 @@ class HomeUplinkRules(unittest.TestCase):
         ap.assert_called_once()
     def test_connect_cleans_up_before_creating_station(self):
         order = []
-        with patch.object(up, 'disconnect', side_effect=lambda: order.append('disconnect')), \
+        with patch.object(up, 'disconnect', side_effect=lambda **k: order.append('disconnect')), \
              patch.object(up, 'interface', side_effect=lambda: order.append('interface') or 'wlsta0'), \
              patch.object(up, 'bring_up', side_effect=lambda d: (_ for _ in ()).throw(ValueError('stop'))), \
              patch.object(up, 'RUN_DIR', Path(self.tmp.name)):
