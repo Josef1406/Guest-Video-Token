@@ -48,6 +48,17 @@ class HomeUplinkRules(unittest.TestCase):
              patch.object(up.Path, 'exists', return_value=True):
             with self.assertRaises(OSError): up.scan()
         ap.assert_called_once()
+    def test_connect_cleans_up_before_creating_station(self):
+        order = []
+        with patch.object(up, 'disconnect', side_effect=lambda: order.append('disconnect')), \
+             patch.object(up, 'interface', side_effect=lambda: order.append('interface') or 'wlsta0'), \
+             patch.object(up, 'bring_up', side_effect=lambda d: (_ for _ in ()).throw(ValueError('stop'))), \
+             patch.object(up, 'RUN_DIR', Path(self.tmp.name)):
+            with self.assertRaises(ValueError): up.connect({'ssid': 'Heim', 'psk': 'geheim123'})
+        self.assertEqual(order, ['disconnect', 'interface'])
+    def test_parse_channels_reads_2ghz_channel(self):
+        out = 'BSS aa(on wlsta0)\n\tfreq: 2462\n\tSSID: Heim\nBSS bb\n\tfreq: 5180\n\tSSID: Fuenf\n'
+        self.assertEqual(up.parse_channels(out), {'Heim': 11})
     def test_ensure_ap_restarts_hostapd_only_when_down(self):
         states = iter([1, 0])  # first check: down, second: up
         cmds = []

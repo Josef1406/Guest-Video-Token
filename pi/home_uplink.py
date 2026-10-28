@@ -269,6 +269,10 @@ def renew_now():
             result = issue()
             STATE['last_success'] = result.get('expires_at')
             _set('done', 100, 'Zertifikat erneuert und HTTPS aktiv.')
+        except subprocess.CalledProcessError as error:
+            detail = (error.stderr or '').strip().splitlines()[-1:] or [str(error.cmd[0])]
+            _set('error', 0, 'Schritt „%s“ fehlgeschlagen: %s. Später automatisch neuer Versuch.'
+                 % (' '.join(error.cmd[:3]), detail[0]))
         except (ValueError, OSError, subprocess.SubprocessError) as error:
             _set('error', 0, str(error) or 'Erneuerung fehlgeschlagen.')
         finally:
