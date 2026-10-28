@@ -93,8 +93,11 @@ def scan():
             time.sleep(2)
         return sorted(n for n in names if n and n != 'Video_GB')
     finally:
-        if dev == 'wlsta0' and Path('/sys/class/net/wlsta0').exists():
-            run('iw', 'dev', 'wlsta0', 'del', check=False)
+        try:
+            if dev == 'wlsta0' and Path('/sys/class/net/wlsta0').exists():
+                run('iw', 'dev', 'wlsta0', 'del', check=False)
+        except (OSError, subprocess.SubprocessError):
+            pass
         ensure_ap()
 
 def connect(cfg):
