@@ -23,7 +23,14 @@
     clearTimeout(timer);
     if (s.busy) timer = setTimeout(refresh, 2000);
   }
-  async function refresh() { try { show(await call('/api/public/home-wifi')); } catch (e) { msg.textContent = e.message; } }
+  async function refresh() {
+    try { show(await call('/api/public/home-wifi')); }
+    catch (e) {
+      msg.textContent = 'Verbindung zum Token unterbrochen – bitte kurz warten oder neu mit „Video_GB" verbinden.';
+      clearTimeout(timer);
+      timer = setTimeout(refresh, 5000);
+    }
+  }
   form.addEventListener('submit', async e => {
     e.preventDefault();
     try {
