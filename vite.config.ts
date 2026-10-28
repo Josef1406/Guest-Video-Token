@@ -4,6 +4,7 @@
 //     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
@@ -14,6 +15,6 @@ export default defineConfig({
   },
   vite: {
     // @peculiar/x509 needs tslib; the CJS build breaks in the published Worker bundle.
-    resolve: { alias: { tslib: "tslib/tslib.es6.mjs" } },
+    resolve: { alias: [{ find: /^tslib$/, replacement: fileURLToPath(new URL("./node_modules/tslib/tslib.es6.mjs", import.meta.url)) }] },
   },
 });
