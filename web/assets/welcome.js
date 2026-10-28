@@ -44,6 +44,7 @@
       : 'Für Video-QRs mit http://192.168.4.1 brauchst du kein Zertifikat. Kamera öffnen, Aufkleber scannen und Video ansehen.';
     instruction.textContent = directInstruction;
     if (https) {
+      document.getElementById('renew-certificate').disabled = certificate?.renewal_available !== true;
       document.getElementById('certificate-message').textContent = certificate?.message || 'Bitte den Admin wegen der Zertifikatseinrichtung verständigen.';
       document.getElementById('certificate-state').textContent = ready ? 'Zertifikat geprüft und aktiv' : certificate?.state === 'setup_required' ? 'Einrichtung noch ausstehend' : 'Kein gültiges, aktiviertes Zertifikat';
       document.getElementById('certificate-validity').textContent = Number.isFinite(expiry) ? 'Gültig bis: ' + new Date(expiry).toLocaleString('de-DE') : 'Noch kein gültiges Zertifikat vorhanden.';

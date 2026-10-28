@@ -10,8 +10,11 @@
 - [x] PIN-geschützte dauerhafte Moduswahl und passende Gäste-Startseiten umsetzen.
 - [x] Lokale CSR-Vorbereitung mit echtem Fortschritt und sicher auf dem Pi verbleibendem Schlüssel umsetzen.
 - [x] Beide Modi, PIN-Schutz und Fehlerfälle testen; Installation und Dokumentation aktualisieren.
-- [ ] Domain-autorisierte Online-Ausstellung, Zertifikatsimport/-prüfung und HTTPS-Aktivierung integrieren — Hetzner-Schlüssel sicher gespeichert; Lovable Cloud aktiviert; gerätegebundene Freigabe, Ausstellung und Handy-Übertragung umsetzen.
-- [ ] Echte Erneuerung und direkten Cloud-QR-Kamera-Scan am Pi/iPhone prüfen — wartet auf Domain-Freigabe und HTTPS-Einrichtung.
+- [x] Hetzner-Zugang und korrekte DNS-Zone ausschließlich lesend prüfen; Zugang erfolgreich, keine DNS-Änderungen vorgenommen.
+- [x] Gerätegebundene Eigentümerfreigabe, signierte Handy-Anfragen, persistente Staging-Ausstellung, geprüften Pi-Import mit nginx-Rollback und Gästeablauf implementieren; 32 Pi-, 15 Web- und 4 Signaturtests sowie öffentlicher Browserablauf geprüft.
+- [ ] Eigentümerkonto anmelden und nach verifizierter Zuordnung autorisieren — wartet auf Josef-Anmeldung auf der Online-Zertifikatsseite; kein passendes Auth-Konto vorhanden, automatische Erstbenutzerfreigabe bleibt gesperrt.
+- [ ] Echte Test-Ausstellung und veröffentlichte Hosting-Laufzeit prüfen — wartet auf Eigentümerfreigabe und Veröffentlichungsauftrag; Produktionsausstellung bleibt standardmäßig gesperrt.
+- [ ] Echte Erneuerung und direkten Cloud-QR-Kamera-Scan am Pi/iPhone prüfen — wartet auf Pi-Update, echte Gerätefreigabe und Vor-Ort-Test.
 
 # Software-Update ohne Wartungsmodus
 - [x] Update-Knopf in der Admin-Seite: lädt `web/` + `pi/` von GitHub über das Handy-Internet und überträgt sie PIN-geschützt an den Token.

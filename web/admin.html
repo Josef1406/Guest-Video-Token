@@ -63,6 +63,10 @@
         <progress id="csrProgress" max="1" value="0" hidden aria-label="Zertifikatsanfrage vorbereiten"></progress>
         <p id="csrMsg" class="muted" role="status" aria-live="polite"></p>
         <a id="csrDownload" hidden download="video-token.csr">Zertifikatsanfrage herunterladen</a>
+        <p><button id="exportEnrollment" type="button">Token-Freigabeanfrage herunterladen</button></p>
+        <p class="muted">Anfrage herunterladen, WLAN kurz verlassen und auf der Online-Seite als Domain-Eigentümer anmelden und freigeben. Dein Pi-Schlüssel bleibt hier.</p>
+        <p><a href="https://guest-video-share.lovable.app/certificates" target="_blank" rel="noopener">Online-Freigabe öffnen</a></p>
+        <p id="enrollmentMessage" class="muted" role="status"></p>
       </div>
     </section>
     <div class="row">
@@ -601,6 +605,20 @@ document.getElementById('prepareCertificate').addEventListener('click', async ()
   finally { btn.disabled = false; }
 });
 function startPolling(){ if(timer) clearInterval(timer); timer=setInterval(loadStatus, 10000); }
+
+document.getElementById('exportEnrollment').addEventListener('click', async () => {
+  const button = document.getElementById('exportEnrollment');
+  const message = document.getElementById('enrollmentMessage'); button.disabled = true;
+  try {
+    const response = await fetch('/api/admin/certificate/enrollment', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body:'{}'});
+    const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Freigabeanfrage fehlgeschlagen.');
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data)], {type:'application/json'}));
+    const a = document.createElement('a'); a.href = url; a.download = 'video-token-freigabe.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    message.textContent = 'Anfrage gespeichert. Auf der Online-Seite „Eigentümer · Token-Freigabe“ wählen, anmelden und die Datei freigeben.';
+  } catch (error) { message.textContent = error.message; }
+  finally { button.disabled = false; }
+});
 
 loadStatus().then(startPolling);
 </script>

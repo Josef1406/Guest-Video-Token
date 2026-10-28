@@ -14,13 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      certificate_accounts: {
+        Row: {
+          account_url: string
+          encrypted_key: string
+          environment: string
+        }
+        Insert: {
+          account_url: string
+          encrypted_key: string
+          environment: string
+        }
+        Update: {
+          account_url?: string
+          encrypted_key?: string
+          environment?: string
+        }
+        Relationships: []
+      }
+      certificate_devices: {
+        Row: {
+          approved_by: string
+          created_at: string
+          csr: string
+          id: string
+          revoked: boolean
+          spki: string
+        }
+        Insert: {
+          approved_by: string
+          created_at?: string
+          csr: string
+          id: string
+          revoked?: boolean
+          spki: string
+        }
+        Update: {
+          approved_by?: string
+          created_at?: string
+          csr?: string
+          id?: string
+          revoked?: boolean
+          spki?: string
+        }
+        Relationships: []
+      }
+      certificate_operators: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      certificate_orders: {
+        Row: {
+          chain: string | null
+          created_at: string
+          device_id: string
+          environment: string
+          error: string | null
+          id: string
+          lease_until: string | null
+          order_url: string | null
+          state: string
+          txt_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          chain?: string | null
+          created_at?: string
+          device_id: string
+          environment: string
+          error?: string | null
+          id: string
+          lease_until?: string | null
+          order_url?: string | null
+          state?: string
+          txt_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chain?: string | null
+          created_at?: string
+          device_id?: string
+          environment?: string
+          error?: string | null
+          id?: string
+          lease_until?: string | null
+          order_url?: string | null
+          state?: string
+          txt_value?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_orders_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "certificate_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_certificate_order: { Args: { order_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

@@ -87,3 +87,10 @@ test('Unknown settings cannot enable either workflow', async () => {
   assert.equal(nodes.get('normal-mode').hidden, true);
   assert.equal(nodes.get('https-mode').hidden, true);
 });
+
+test('Guests can renew only when the Pi reports an available local identity', async () => {
+  const view = await welcome('https', false, { ready: false, renewal_available: false });
+  assert.equal(view.nodes.get('renew-certificate').disabled, true);
+  await view.activated({ ready: false, renewal_available: true });
+  assert.equal(view.nodes.get('renew-certificate').disabled, false);
+});

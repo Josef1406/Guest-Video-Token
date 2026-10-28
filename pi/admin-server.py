@@ -35,6 +35,7 @@ from http.cookies import SimpleCookie
 from urllib.parse import unquote, parse_qs, urlparse
 import video_link
 import update_package
+import certificate_bridge
 
 PIN_FILE      = "/etc/video-token/admin.pin"
 UPLOAD_SECRET_FILE = "/etc/video-token/upload.secret"
@@ -379,6 +380,25 @@ class Handler(BaseHTTPRequestHandler):
     # ---- POST ----
     def do_POST(self):
         path = self.path.split("?", 1)[0]
+
+        if path in ('/api/admin/certificate/enrollment', '/api/public/certificate/request', '/api/public/certificate/import'):
+            if path.startswith('/api/admin/') and not is_authed(self.headers):
+                return self._json(401, {'error': 'Bitte mit der Admin-PIN anmelden.'})
+            if self._same_origin_blocked():
+                return self._json(403, {'error': 'Fremder Seitenaufruf nicht erlaubt.'})
+            try:
+                n = int(self.headers.get('Content-Length', '0'))
+                if not 0 <= n <= 40000:
+                    return self._json(413, {'error': 'Anfrage zu groß.'})
+                data = json.loads(self.rfile.read(n) or b'{}')
+                if path.endswith('/enrollment'): result = certificate_bridge.enrollment()
+                elif path.endswith('/request'): result = certificate_bridge.renewal()
+                else: result = certificate_bridge.activate(data)
+                return self._json(200, result)
+            except (ValueError, TypeError) as error:
+                return self._json(400, {'error': str(error)})
+            except (OSError, subprocess.SubprocessError):
+                return self._json(500, {'error': 'Zertifikat konnte nicht geprüft oder aktiviert werden. Datum/Uhrzeit und Pi-Einrichtung prüfen lassen.'})
 
         if path in ("/api/admin/video-link", "/api/admin/certificate/prepare"):
             if not is_authed(self.headers):

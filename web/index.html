@@ -44,8 +44,11 @@
 <h2>Zertifikat für Cloud-QRs</h2>
 <div class="welcome-alert" role="status"><b id="certificate-state">Einrichtung noch ausstehend</b><br/><span id="certificate-message"></span></div>
 <p id="certificate-validity" class="welcome-note"></p>
-<button class="welcome-btn welcome-wide" type="button" disabled>Zertifikat erneuern</button>
-<p class="welcome-note">Die Erneuerung wird verfügbar, sobald die Online-Ausstellung eingerichtet ist. Noch wurde kein Zertifikat erneuert.</p>
+<button id="renew-certificate" class="welcome-btn welcome-wide" type="button" disabled>Zertifikat erneuern</button>
+<progress id="renewal-progress" max="1" value="0" hidden aria-label="Zertifikatserneuerung"></progress>
+<p id="renewal-message" class="welcome-note" role="status" aria-live="polite"></p>
+<p id="renewal-online" hidden><a href="https://guest-video-share.lovable.app/certificates" target="_blank" rel="noopener">Online-Zertifikatserneuerung öffnen →</a><br/><span class="welcome-note">Falls kein Internet erreichbar ist: WLAN ausschalten und diesen Link in Safari öffnen.</span></p>
+<p><label for="certificate-file">Zurück im Token-WLAN: Zertifikat übertragen</label><br/><input id="certificate-file" type="file" accept=".json,application/json" /></p>
 <p class="welcome-note">Nach erfolgreicher Aktivierung erscheint hier automatisch die Anleitung zum Kamera-Scan. Falls dieses WLAN-Fenster geschlossen wird, öffne in Safari http://192.168.4.1.</p>
 <p><a href="/scan.html">Bis dahin: Cloud-QR als Foto öffnen →</a></p>
 </section>
@@ -53,5 +56,6 @@
 </main>
 <noscript><p>Bitte aktiviere JavaScript für den Zertifikatsstatus. <a href="/admin.html">Admin</a> · <a href="/scan.html">QR-Foto lesen</a></p></noscript>
 <script src="/assets/welcome.js"></script>
+<script src="/assets/certificate-bridge.js"></script>
 </body>
 </html>

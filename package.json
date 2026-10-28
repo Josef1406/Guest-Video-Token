@@ -12,7 +12,10 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@fishballpkg/acme": "^0.18.0",
     "@hookform/resolvers": "^5.2.2",
+    "@lovable.dev/cloud-auth-js": "^1.1.2",
+    "@peculiar/x509": "^2.2.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.8",
@@ -58,6 +61,7 @@
     "react-hook-form": "^7.71.2",
     "react-resizable-panels": "^4.6.5",
     "recharts": "^2.15.4",
+    "reflect-metadata": "^0.2.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
@@ -86,6 +90,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "^5.0.5"
   }
 }
