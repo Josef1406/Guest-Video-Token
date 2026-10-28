@@ -14,7 +14,7 @@ echo "==> Pakete installieren"
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   hostapd dnsmasq nginx-light \
-  python3 \
+  python3 openssl \
   iw rfkill wpasupplicant
 
 if ! DEBIAN_FRONTEND=noninteractive apt-get install -y raspi-gpio 2>/dev/null; then
@@ -72,6 +72,7 @@ install -m 0755 "$REPO_DIR/switch-mode.sh"       /usr/local/sbin/switch-mode
 install -m 0755 "$REPO_DIR/pi-lock-videos.sh"    /usr/local/sbin/pi-lock-videos
 install -m 0755 "$REPO_DIR/pi-unlock-videos.sh"  /usr/local/sbin/pi-unlock-videos
 install -m 0755 "$REPO_DIR/admin-server.py"      /usr/local/sbin/admin-server.py
+install -m 0644 "$REPO_DIR/video_link.py"        /usr/local/sbin/video_link.py
 install -m 0755 "$REPO_DIR/boot-mode.sh"         /usr/local/sbin/video-token-bootmode
 
 mkdir -p /var/lib/video-token
@@ -79,6 +80,10 @@ echo "ap" > /var/lib/video-token/mode
 
 echo "==> Admin-PIN (Default 1234, falls noch nicht gesetzt)"
 mkdir -p /etc/video-token
+if [[ ! -f /etc/video-token/video-link.json ]]; then
+  printf '%s\n' '{"mode":"normal"}' > /etc/video-token/video-link.json
+  chmod 0600 /etc/video-token/video-link.json
+fi
 if [[ ! -f /etc/video-token/admin.pin ]]; then
   echo "1234" > /etc/video-token/admin.pin
   chmod 0600 /etc/video-token/admin.pin

@@ -25,6 +25,7 @@ import json, os, re, subprocess, secrets, time, shutil, hmac, shlex, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from http.cookies import SimpleCookie
 from urllib.parse import unquote, parse_qs, urlparse
+import video_link
 
 PIN_FILE      = "/etc/video-token/admin.pin"
 UPLOAD_SECRET_FILE = "/etc/video-token/upload.secret"
@@ -206,6 +207,7 @@ def build_status():
     events = list_events()
     return {
         "mode":       get_mode(),
+        "video_link": video_link.status(),
         "hostname":   os.uname().nodename,
         "events":     events,
         "video_count": sum(e["count"] for e in events),
@@ -361,17 +363,26 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = self.path.split("?", 1)[0]
 
-        if path == "/api/admin/login":
-            n = int(self.headers.get("Content-Length", "0") or "0")
-            try: data = json.loads(self.rfile.read(n) or b"{}")
-            except Exception: data = {}
-            pin = str(data.get("pin", ""))
-            if hmac.compare_digest(pin, load_pin()):
-                tok = secrets.token_urlsafe(24)
-                SESSIONS[tok] = time.time() + SESSION_TTL
-    # ---- POST ----
-    def do_POST(self):
-        path = self.path.split("?", 1)[0]
+        if path in ("/api/admin/video-link", "/api/admin/certificate/prepare"):
+            if not is_authed(self.headers):
+                return self._json(401, {"error": "Bitte mit der Admin-PIN anmelden."})
+            host = self.headers.get("Host", "")
+            origin = self.headers.get("Origin")
+            if self.headers.get("Sec-Fetch-Site") == "cross-site" or (origin and origin not in (f"http://{host}", f"https://{host}")):
+                return self._json(403, {"error": "Fremder Seitenaufruf nicht erlaubt."})
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+                if not 0 <= n <= 2048:
+                    return self._json(413, {"error": "Anfrage zu groß."})
+                data = json.loads(self.rfile.read(n) or b"{}")
+                if not isinstance(data, dict):
+                    raise ValueError("Ungültige Anfrage")
+                result = video_link.save_mode(data.get("mode")) if path.endswith("video-link") else video_link.prepare_csr()
+                return self._json(200, result)
+            except (ValueError, TypeError):
+                return self._json(400, {"error": "Ungültiger Modus oder ungültige Anfrage."})
+            except (OSError, subprocess.SubprocessError):
+                return self._json(500, {"error": "Anfrage konnte nicht vorbereitet oder gespeichert werden. Bitte den Admin verständigen."})
 
         # -----------------------------------------------------------
         # /api/upload  – Multipart, per X-Upload-Secret authentifiziert.
@@ -726,6 +737,8 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- GET ----
     def do_GET(self):
+        if self.path.split("?", 1)[0] == "/api/public/video-link":
+            return self._json(200, video_link.status())
         if self.path == "/api/admin/status":
             if not is_authed(self.headers):
                 return self._json(401, {"error": "unauthorized"})

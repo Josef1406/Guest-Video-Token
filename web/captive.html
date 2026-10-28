@@ -1,156 +1,55 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="robots" content="noindex" />
-  <title>Video_GB – Verbindung</title>
-  <style>
-    :root { color-scheme: light dark; }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; min-height: 100%; }
-    body {
-      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
-      color: #f8fafc;
-      display: grid;
-      place-items: center;
-      padding: 1.25rem;
-    }
-    .card {
-      max-width: 26rem;
-      width: 100%;
-      background: #1e293b;
-      border-radius: 1.25rem;
-      padding: 1.5rem 1.5rem 1.75rem;
-      text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,.4);
-    }
-    h1 { margin: .25rem 0 .35rem; font-size: 1.35rem; }
-    p  { margin: .35rem 0; color: #cbd5e1; font-size: .98rem; }
-    .ssid {
-      display: inline-block; padding: .1rem .5rem; border-radius: .35rem;
-      background: #334155; color: #fef08a; font-weight: 600;
-    }
-    .steps {
-      list-style: none; padding: 0; margin: 1.25rem 0 0;
-      text-align: left;
-      display: grid; gap: .75rem;
-    }
-    .steps li {
-      display: grid;
-      grid-template-columns: 2rem 1fr;
-      align-items: center;
-      gap: .75rem;
-      background: #0f172a;
-      border-radius: .65rem;
-      padding: .7rem .85rem;
-      font-size: .95rem;
-      color: #e2e8f0;
-    }
-    .steps .num {
-      display: grid; place-items: center;
-      width: 2rem; height: 2rem; border-radius: 50%;
-      background: #22c55e; color: #052e16; font-weight: 700;
-    }
-    .illustration {
-      margin: 1rem auto .25rem;
-      display: block;
-      width: 170px;
-      height: auto;
-    }
-    button {
-      -webkit-appearance: none; appearance: none;
-      width: 100%;
-      padding: 1rem 1rem;
-      margin-top: 1.25rem;
-      border: 0;
-      border-radius: .85rem;
-      background: #22c55e;
-      color: #052e16;
-      font-size: 1.05rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    button:active { transform: translateY(1px); }
-    .hint { font-size: .8rem; color: #94a3b8; margin-top: .9rem; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="robots" content="noindex" />
+<title>Video_GB – Dein Video-Token</title>
+<meta name="description" content="Mit Video_GB verbinden und deine persönliche Video-Botschaft ansehen. Zertifikatsstatus und lokaler Admin-Einstieg." />
+<meta property="og:title" content="Video_GB – Dein Video-Token" />
+<meta property="og:description" content="Deine Video-Botschaft lokal ansehen und herunterladen." />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<link rel="stylesheet" href="/assets/welcome.css" />
 </head>
 <body>
-  <main class="card">
-    <h1>Willkommen! 🎬</h1>
-    <p>Du bist mit dem WLAN <span class="ssid">Video_GB</span> verbunden.</p>
-
-    <!-- Kleine Grafik: Sticker mit QR-Code + Smartphone -->
-    <svg class="illustration" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <!-- Sticker -->
-      <rect x="14" y="26" width="96" height="108" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-      <text x="62" y="46" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#78350f">VIDEO-BOTSCHAFT</text>
-      <!-- QR-Code stilisiert -->
-      <g fill="#111827" transform="translate(28,54)">
-        <rect x="0"  y="0"  width="18" height="18"/>
-        <rect x="4"  y="4"  width="10" height="10" fill="#fef3c7"/>
-        <rect x="7"  y="7"  width="4"  height="4"  fill="#111827"/>
-        <rect x="50" y="0"  width="18" height="18"/>
-        <rect x="54" y="4"  width="10" height="10" fill="#fef3c7"/>
-        <rect x="57" y="7"  width="4"  height="4"  fill="#111827"/>
-        <rect x="0"  y="50" width="18" height="18"/>
-        <rect x="4"  y="54" width="10" height="10" fill="#fef3c7"/>
-        <rect x="7"  y="57" width="4"  height="4"  fill="#111827"/>
-        <!-- Punkte -->
-        <rect x="24" y="4"  width="4" height="4"/>
-        <rect x="30" y="0"  width="4" height="4"/>
-        <rect x="36" y="6"  width="4" height="4"/>
-        <rect x="42" y="2"  width="4" height="4"/>
-        <rect x="24" y="12" width="4" height="4"/>
-        <rect x="34" y="14" width="4" height="4"/>
-        <rect x="4"  y="24" width="4" height="4"/>
-        <rect x="12" y="28" width="4" height="4"/>
-        <rect x="20" y="24" width="4" height="4"/>
-        <rect x="26" y="30" width="4" height="4"/>
-        <rect x="34" y="26" width="4" height="4"/>
-        <rect x="42" y="30" width="4" height="4"/>
-        <rect x="50" y="24" width="4" height="4"/>
-        <rect x="58" y="28" width="4" height="4"/>
-        <rect x="4"  y="36" width="4" height="4"/>
-        <rect x="16" y="40" width="4" height="4"/>
-        <rect x="22" y="36" width="4" height="4"/>
-        <rect x="30" y="42" width="4" height="4"/>
-        <rect x="40" y="38" width="4" height="4"/>
-        <rect x="48" y="42" width="4" height="4"/>
-        <rect x="60" y="36" width="4" height="4"/>
-        <rect x="24" y="52" width="4" height="4"/>
-        <rect x="30" y="58" width="4" height="4"/>
-        <rect x="38" y="52" width="4" height="4"/>
-        <rect x="44" y="60" width="4" height="4"/>
-        <rect x="52" y="54" width="4" height="4"/>
-        <rect x="60" y="60" width="4" height="4"/>
-      </g>
-
-      <!-- Smartphone scannt -->
-      <rect x="126" y="40" width="60" height="96" rx="8" fill="#0f172a" stroke="#94a3b8" stroke-width="2"/>
-      <rect x="132" y="52" width="48" height="66" rx="3" fill="#1e293b"/>
-      <!-- Scan-Rahmen -->
-      <path d="M138 62 v-6 h6 M174 62 v-6 h-6 M138 108 v6 h6 M174 108 v6 h-6"
-            fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="156" cy="128" r="3" fill="#475569"/>
-      <!-- Scan-Strahlen -->
-      <path d="M110 60 L128 68 M110 80 L128 82 M110 100 L128 96"
-            stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" opacity=".7"/>
-    </svg>
-
-    <ol class="steps">
-      <li><span class="num">1</span><span>Tippe unten auf <b>Verbindung annehmen</b>.</span></li>
-      <li><span class="num">2</span><span>Es erscheint eine Seite mit <b>„Success"</b> — schließe sie oben rechts mit dem <b>⊗ Kreis mit X</b>.</span></li>
-      <li><span class="num">3</span><span>iPhone fragt <b>„Kein Internet"</b> — wähle <b>„Ohne Internet verwenden"</b>. So bleibt die Verbindung erhalten.</span></li>
-      <li><span class="num">4</span><span>Öffne danach in <b>Safari oder deinem Browser</b> die Adresse <b>http://192.168.4.1/scan.html</b>. Tippe dort auf <b>QR-Code fotografieren</b> und fotografiere den QR-Code auf deinem Video-Botschaft-Aufkleber.</span></li>
-    </ol>
-
-    <form method="get" action="/accept">
-      <button type="submit">Verbindung annehmen</button>
-    </form>
-    <p style="margin-top: 1rem;"><a href="/scan.html" style="color: inherit; font-weight: 700;">Bereits verbunden? Video-QR scannen →</a></p>
-    <p class="hint">Bleibe im WLAN <b>Video_GB</b>, solange du dein Video ansehen möchtest.</p>
-  </main>
+<header class="welcome-header"><div>
+<span class="welcome-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2" y="5" width="14" height="14" rx="3"/><path d="m16 10 6-4v12l-6-4"/></svg>Video_GB</span>
+<a class="welcome-admin" href="/admin.html">Admin · PIN →</a>
+</div></header>
+<main class="welcome-main">
+<span class="welcome-eyebrow">Deine persönliche Video-Botschaft</span>
+<h1>Willkommen am Video-Token.</h1>
+<p class="welcome-lead">Ein besonderer Moment. Für dich zum Ansehen und Mitnehmen.</p>
+<div class="welcome-meta"><span class="welcome-tag">WLAN · Video_GB</span><span id="welcome-state" role="status" aria-live="polite">Token-Einstellungen werden geladen…</span></div>
+<svg class="welcome-art" viewBox="0 0 160 132" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+<rect x="10" y="16" width="78" height="96" rx="5"/><path d="M25 34h48M25 99h34"/><path d="M25 47h16v16H25zm32 0h16v16H57zM25 79h16v16H25zM57 79h7v7h-7zm9 9h7v7h-7zM47 68h10v7H47z"/>
+<rect x="104" y="34" width="44" height="84" rx="7"/><path d="M110 44h32v59h-32zM120 110h12M115 57v-7h7M137 57v-7h-7M115 88v7h7M137 88v7h-7"/><path d="m86 58 17 7m-17 17 17-2" stroke-dasharray="3 3"/>
+</svg>
+<section class="welcome-section" aria-labelledby="connect-title">
+<h2 id="connect-title">Mit dem Token verbunden bleiben</h2>
+<ol class="welcome-steps">
+<li><span class="welcome-num">1</span><div><span class="welcome-step-title">Verbindung annehmen</span><p>Tippe unten auf den Button. Es erscheint „Success“.</p></div></li>
+<li><span class="welcome-num">2</span><div><span class="welcome-step-title">Am iPhone: Kreis mit X drücken</span><p>Schließe die „Success“-Seite oben rechts. Wähle danach im WLAN-Dialog <b>„Ohne Internet verwenden“</b>.</p></div></li>
+<li><span class="welcome-num">3</span><div><span class="welcome-step-title">Deine Video-Botschaft öffnen</span><p id="scan-instruction">Öffne die normale Handy-Kamera und scanne den QR-Code auf deinem Video-Botschaft-Aufkleber.</p></div></li>
+</ol>
+<form id="accept-form" class="welcome-actions" method="get" action="/accept"><button class="welcome-btn welcome-wide" type="submit">Verbindung annehmen <span aria-hidden="true">→</span></button></form>
+</section>
+<section id="normal-mode" class="welcome-section" hidden>
+<h2>Dein QR-Code ist der direkte Weg.</h2>
+<p class="welcome-lead">Für Video-QRs mit http://192.168.4.1 brauchst du kein Zertifikat. Kamera öffnen, Aufkleber scannen und Video ansehen.</p>
+<p class="welcome-note">Du hast einen Cloud-QR? <a href="/scan.html">QR-Foto lokal lesen →</a></p>
+</section>
+<section id="https-mode" class="welcome-section" hidden>
+<h2>Zertifikat für Cloud-QRs</h2>
+<div class="welcome-alert"><b>Einrichtung noch ausstehend</b><br/><span id="certificate-message"></span></div>
+<button class="welcome-btn welcome-wide" type="button" disabled>Zertifikat erneuern</button>
+<p class="welcome-note">Die Erneuerung wird verfügbar, sobald die Online-Ausstellung eingerichtet ist. Noch wurde kein Zertifikat erneuert.</p>
+<p><a href="/scan.html">Bis dahin: Cloud-QR als Foto öffnen →</a></p>
+</section>
+<footer class="welcome-footer">Bleibe im WLAN Video_GB, solange du dein Video ansiehst.<br/>Deine Videos bleiben auf diesem Token.</footer>
+</main>
+<noscript><p>Bitte aktiviere JavaScript für den Zertifikatsstatus. <a href="/admin.html">Admin</a> · <a href="/scan.html">QR-Foto lesen</a></p></noscript>
+<script src="/assets/welcome.js"></script>
 </body>
 </html>
