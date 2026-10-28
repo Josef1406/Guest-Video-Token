@@ -5,7 +5,7 @@ import { inspectCsr, certificateDomain, encode, verifyRenewal, signatureRaw } fr
 
 async function csr(names: string[]) {
   const keys = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
-  const request = await Pkcs10CertificateRequestGenerator.create({ name: 'CN=' + certificateDomain, keys, signingAlgorithm: { name: 'ECDSA', hash: 'SHA-256' }, extensions: [new SubjectAlternativeNameExtension(names.map(value => ({ type: 'dns', value })))] }, crypto);
+  const request = await Pkcs10CertificateRequestGenerator.create({ name: 'CN=' + certificateDomain, keys, signingAlgorithm: { name: 'ECDSA', hash: 'SHA-256' }, extensions: [new SubjectAlternativeNameExtension(names.map(value => ({ type: 'dns' as const, value })))] }, crypto);
   return request.toString('pem');
 }
 describe('fixed video domain authorization', () => {

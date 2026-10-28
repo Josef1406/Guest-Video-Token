@@ -18,6 +18,7 @@ export const Route = createFileRoute("/")({
 const previewDocument = welcomeHtml
   .replace('<html lang="de">', '<html lang="de" data-preview="true">')
   .replace('<link rel="stylesheet" href="/assets/welcome.css" />', `<style>${welcomeCss}</style>`)
+  .replace('<script src="/assets/certificate-bridge.js"></script>', '')
   .replace('<script src="/assets/welcome.js"></script>', `<script>${welcomeJs}</script>`);
 
 function Index() {
