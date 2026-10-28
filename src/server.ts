@@ -1,3 +1,5 @@
+// Must load first: the bundled certificate library (tsyringe) needs this polyfill at startup.
+import "reflect-metadata";
 import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
