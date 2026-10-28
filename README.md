@@ -545,7 +545,7 @@ Fehlt die Client-Config, siehe [Wartungs-Modus](#wartungs-modus-heim-wlan-gpio-2
 Im Zertifikat-Modus zeigt die Startseite (`http://192.168.4.1`) das Formular **„Token mit deinem Heim-WLAN verbinden“**. Der Kunde gibt dort einmalig WLAN-Name und Passwort ein. Der Token verbindet sich danach über ein **zweites WLAN-Modul** mit dem Internet und holt sich das Zertifikat selbst. Das Token-WLAN `Video_GB` bleibt dabei an.
 
 - Empfohlen: USB-WLAN-Stick (erscheint als `wlan1`) am Micro-USB-OTG-Adapter.
-- Ohne Stick versucht der Token eine zweite, virtuelle Verbindung über den eingebauten Chip (`wlsta0`). Das klappt nur, wenn das Heim-WLAN auf demselben Kanal wie `Video_GB` (Kanal 6) funkt.
+- Ohne Stick pausiert der Token `Video_GB` für 2–5 Minuten, verbindet sich über den eingebauten Chip (`wlsta0`) mit dem Heim-WLAN, erneuert und schaltet `Video_GB` danach wieder ein. Ein Sicherheits-Timer startet `Video_GB` spätestens nach 10 Minuten neu, auch wenn etwas hängt. Die automatische Erneuerung startet nur, wenn gerade kein Gast verbunden ist.
 - Alle 6 Stunden prüft der Token, ob das Zertifikat in weniger als 30 Tagen abläuft, und erneuert es dann automatisch, sobald das Heim-WLAN erreichbar ist.
 - Das Passwort liegt nur auf dem Pi (`/etc/video-token/home-wifi.json`, 0600) und kann über keine Seite ausgelesen werden.
 - Die Erneuerung über Dateien und WLAN-Wechsel am Handy bleibt als Rückfallweg erhalten.
