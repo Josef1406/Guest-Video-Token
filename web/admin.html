@@ -28,6 +28,7 @@
 <body>
 <main class="container">
   <h1>🔧 Video-Token · Admin</h1>
+  <p><a href="/">← Gäste-Startseite</a></p>
 
   <section id="login" class="card" hidden>
     <h2>PIN eingeben</h2>
@@ -39,6 +40,24 @@
   </section>
 
   <section id="dashboard" hidden>
+    <section class="card" aria-labelledby="link-mode-title">
+      <h2 id="link-mode-title">Video-Link-Modus</h2>
+      <form id="linkModeForm">
+        <p><label><input type="radio" name="linkMode" value="normal" /> <b>Normal</b> · http://192.168.4.1 · keine Zertifikatsseite</label></p>
+        <p><label><input type="radio" name="linkMode" value="https" /> <b>Mit Zertifikat</b> · https://video.gaestebuch.cloud</label></p>
+        <button id="saveLinkMode" type="submit">Modus speichern</button>
+      </form>
+      <p id="linkModeMsg" class="muted" role="status" aria-live="polite"></p>
+      <div id="certificateSetup" hidden>
+        <h3>Zertifikatseinrichtung</h3>
+        <p id="certAdminStatus" class="muted"></p>
+        <p class="muted">Die Auswahl allein aktiviert noch kein HTTPS. Der Domain-Verwalter muss zuerst die Online-Ausstellung freigeben. Dein privater Schlüssel bleibt auf diesem Pi.</p>
+        <button id="prepareCertificate" type="button">Zertifikatsanfrage vorbereiten</button>
+        <progress id="csrProgress" max="1" value="0" hidden aria-label="Zertifikatsanfrage vorbereiten"></progress>
+        <p id="csrMsg" class="muted" role="status" aria-live="polite"></p>
+        <a id="csrDownload" hidden download="video-token.csr">Zertifikatsanfrage herunterladen</a>
+      </div>
+    </section>
     <div class="row">
       <div class="muted">Aktualisiert: <span id="ts">–</span></div>
       <button class="secondary" id="logout">Logout</button>
@@ -155,6 +174,7 @@ async function loadStatus() {
     `${fmtBytes(d.used)} von ${fmtBytes(d.total)} belegt · ${d.path}`;
 
   currentEvents = s.events;
+  renderVideoLink(s.video_link);
   renderEvents(s.events);
   renderEventSelect(s.events);
 
@@ -397,6 +417,48 @@ document.getElementById("logout").addEventListener("click", async () => {
 });
 
 let timer=null;
+let csrUrl = null;
+function renderVideoLink(settings) {
+  if (!settings) return;
+  const radio = document.querySelector(`input[name="linkMode"][value="${settings.mode === 'https' ? 'https' : 'normal'}"]`);
+  if (radio && !document.getElementById('linkModeForm').contains(document.activeElement)) radio.checked = true;
+  document.getElementById('certificateSetup').hidden = settings.mode !== 'https';
+  document.getElementById('certAdminStatus').textContent = settings.certificate?.message || '';
+}
+document.getElementById('linkModeForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const selected = document.querySelector('input[name="linkMode"]:checked');
+  if (!selected) return;
+  const btn = document.getElementById('saveLinkMode');
+  const msg = document.getElementById('linkModeMsg');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/admin/video-link', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mode:selected.value})});
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Speichern fehlgeschlagen.');
+    renderVideoLink(data);
+    msg.textContent = data.mode === 'normal' ? 'Normalmodus gespeichert. Keine Zertifikatsseite für Gäste.' : 'HTTPS-Modus gespeichert. Zertifikatseinrichtung noch erforderlich.';
+  } catch (error) { msg.textContent = error.message; }
+  finally { btn.disabled = false; }
+});
+document.getElementById('prepareCertificate').addEventListener('click', async () => {
+  const btn = document.getElementById('prepareCertificate');
+  const progress = document.getElementById('csrProgress');
+  const msg = document.getElementById('csrMsg');
+  const download = document.getElementById('csrDownload');
+  btn.disabled = true; progress.hidden = false; progress.removeAttribute('value'); download.hidden = true;
+  msg.textContent = 'Privaten Schlüssel und Zertifikatsanfrage lokal vorbereiten…';
+  try {
+    const r = await fetch('/api/admin/certificate/prepare', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body:'{}'});
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Vorbereitung fehlgeschlagen.');
+    if (csrUrl) URL.revokeObjectURL(csrUrl);
+    csrUrl = URL.createObjectURL(new Blob([data.csr], {type:'application/pkcs10'}));
+    download.href = csrUrl; download.hidden = false; progress.value = 1;
+    msg.textContent = 'Anfrage vorbereitet — noch kein Zertifikat erneuert. Online-Ausstellung wartet auf Domain-Freigabe.';
+  } catch (error) { progress.hidden = true; msg.textContent = error.message; }
+  finally { btn.disabled = false; }
+});
 function startPolling(){ if(timer) clearInterval(timer); timer=setInterval(loadStatus, 10000); }
 
 loadStatus().then(startPolling);
