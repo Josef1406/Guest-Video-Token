@@ -32,7 +32,7 @@ async function updateTxt(token: string, value: string, remove: boolean) {
   const rrset = await hetzner(path, token);
   const record = { value: '"' + value + '"' };
   const exists = rrset?.rrset?.records?.some((item: { value: string }) => item.value === record.value);
-  if (remove && !exists || !remove && exists) return;
+  if ((remove && !exists) || (!remove && exists)) return;
   const result = !rrset && !remove
     ? await hetzner('/zones/' + zone.id + '/rrsets', token, 'POST', { name: challengeName, type: 'TXT', ttl: 60, records: [record] })
     : await hetzner(path + '/actions/' + (remove ? 'remove_records' : 'add_records'), token, 'POST', { records: [record] });
@@ -78,6 +78,9 @@ export async function advanceOrder(id: string, secrets: Secrets) {
     if (job.state === 'complete' || job.state === 'failed') return;
     if (job.state === 'cleanup' || job.state === 'failed_cleanup') {
       if (job.txt_value) await updateTxt(secrets.hetzner, job.txt_value, true);
+      // Release shared-name ownership only after the asynchronous removal
+      // is observed by a second read on a later durable step.
+      if (job.txt_value && await visible(job.txt_value)) return;
       await patch({ state: job.state === 'cleanup' ? 'complete' : 'failed' }); return;
     }
     if (Date.now() - Date.parse(job.created_at) > 3600000) throw new Error('Ausstellung abgelaufen; bitte den Admin verständigen.');
@@ -102,7 +105,8 @@ export async function advanceOrder(id: string, secrets: Secrets) {
     if (snapshot.status === 'ready') {
       const csr = await inspectCsr(device.csr);
       if (csr.spki !== device.spki) throw new Error('Geräteschlüssel wurde verändert.');
-      await acme.jwsFetch(snapshot.finalize, { payload: { csr: csr.der } });
+      const response = await acme.jwsFetch(snapshot.finalize, { payload: { csr: csr.der } });
+      if (!response.ok) throw new Error('Zertifikatsabschluss fehlgeschlagen (' + response.status + ').');
       await patch({ state: 'issuing' }); return;
     }
     if (snapshot.status === 'processing') return;
@@ -120,7 +124,11 @@ export async function advanceOrder(id: string, secrets: Secrets) {
     await patch({ state: 'validating' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Ausstellung fehlgeschlagen.';
-    await patch({ state: job.txt_value ? 'failed_cleanup' : 'failed', error: message });
+    if (job.state === 'cleanup' || job.state === 'failed_cleanup') {
+      await patch({ error: message });
+    } else {
+      await patch({ state: job.txt_value ? 'failed_cleanup' : 'failed', error: message });
+    }
   } finally {
     await db.from('certificate_orders').update({ lease_until: null }).eq('id', id);
   }
