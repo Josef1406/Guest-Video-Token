@@ -68,3 +68,21 @@ class VideoLinkRules(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class CloudDomainDns(unittest.TestCase):
+    def test_normal_mode_does_not_answer_cloud_domain_locally(self):
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "https.conf"
+            with patch.object(video_link, "HTTPS_DNS_FILE", f), patch.object(video_link.subprocess, "run"):
+                video_link.apply_dns("https")
+                self.assertIn("address=/video.gaestebuch.cloud/192.168.4.1", f.read_text())
+                video_link.apply_dns("normal")
+                self.assertFalse(f.exists())
+
+    def test_base_config_hijacks_only_captive_checks(self):
+        conf = (Path(__file__).parent / "config" / "dnsmasq.conf").read_text()
+        self.assertNotIn("address=/#/", conf)
+        self.assertNotIn("gaestebuch.cloud", conf)
+        self.assertIn("address=/captive.apple.com/192.168.4.1", conf)
