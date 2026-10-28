@@ -9,5 +9,5 @@
 - [x] PIN-geschützte dauerhafte Moduswahl und passende Gäste-Startseiten umsetzen.
 - [x] Lokale CSR-Vorbereitung mit echtem Fortschritt und sicher auf dem Pi verbleibendem Schlüssel umsetzen.
 - [x] Beide Modi, PIN-Schutz und Fehlerfälle testen; Installation und Dokumentation aktualisieren.
-- [ ] Domain-autorisierte Online-Ausstellung, Zertifikatsimport/-prüfung und HTTPS-Aktivierung integrieren — Domain-Zugang laut Eigentümer vorhanden; wartet auf Klärung des DNS-Anbieters und sichere Autorisierung.
+- [ ] Domain-autorisierte Online-Ausstellung, Zertifikatsimport/-prüfung und HTTPS-Aktivierung integrieren — Hetzner-Zugang laut Eigentümer vorhanden; wartet auf sichere Autorisierung und Einrichtung des Ausstellungsdienstes.
 - [ ] Echte Erneuerung und direkten Cloud-QR-Kamera-Scan am Pi/iPhone prüfen — wartet auf Domain-Freigabe und HTTPS-Einrichtung.
