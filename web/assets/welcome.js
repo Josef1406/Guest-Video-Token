@@ -41,7 +41,7 @@
     document.getElementById('scan-ready-title').textContent = ready ? 'Zertifikat aktiv. Dein Video ist bereit.' : 'Dein QR-Code ist der direkte Weg.';
     document.getElementById('scan-ready-message').textContent = ready
       ? 'Bleibe im WLAN Video_GB. Öffne die normale Handy-Kamera und scanne den Cloud-QR auf deinem Video-Botschaft-Aufkleber.'
-      : 'Für Video-QRs mit http://192.168.4.1 brauchst du kein Zertifikat. Kamera öffnen, Aufkleber scannen und Video ansehen.';
+      : 'Kamera öffnen, QR-Code scannen – dein Video öffnet sich direkt vom Token. Dafür müssen die mobilen Daten eingeschaltet sein.';
     instruction.textContent = directInstruction;
     if (https) {
       document.getElementById('renew-certificate').disabled = certificate?.renewal_available !== true;

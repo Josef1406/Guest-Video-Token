@@ -41,7 +41,27 @@ def save_mode(mode):
         finally:
             if os.path.exists(temporary):
                 os.unlink(temporary)
+    apply_dns(mode)
     return status()
+
+
+HTTPS_DNS_FILE = Path("/etc/dnsmasq.d/video-token-https.conf")
+
+
+def apply_dns(mode):
+    """Only the certificate mode answers the cloud domain locally. In normal
+    mode the phone resolves it via mobile data and the cloud page redirects
+    to http://192.168.4.1/v/..."""
+    try:
+        if mode == "https":
+            HTTPS_DNS_FILE.write_text(f"address=/{DOMAIN}/192.168.4.1\n")
+        elif HTTPS_DNS_FILE.exists():
+            HTTPS_DNS_FILE.unlink()
+        else:
+            return
+        subprocess.run(["systemctl", "restart", "dnsmasq"], capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        pass
 
 
 def status():
