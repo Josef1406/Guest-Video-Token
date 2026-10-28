@@ -96,10 +96,11 @@ def interface():
     return 'wlsta0'
 
 def bring_up(dev):
-    result = subprocess.run(['ip', 'link', 'set', dev, 'up'], capture_output=True, text=True, timeout=15)
-    if result.returncode:
+    try:
+        run('ip', 'link', 'set', dev, 'up', timeout=15)
+    except subprocess.CalledProcessError as error:
         raise ValueError('Zweite WLAN-Verbindung am Token konnte nicht gestartet werden (%s). '
-                         'Token neu starten und erneut versuchen.' % (result.stderr.strip() or dev))
+                         'Token neu starten und erneut versuchen.' % ((error.stderr or '').strip() or dev))
 
 def parse_channels(scan_output):
     """{ssid: 2.4-GHz channel} from `iw dev X scan` output."""
