@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import welcomeHtml from "../../web/index.html?raw";
+import welcomeCss from "../../web/assets/welcome.css?raw";
+import welcomeJs from "../../web/assets/welcome.js?raw";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -12,18 +15,14 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
+const previewDocument = welcomeHtml
+  .replace('<html lang="de">', '<html lang="de" data-preview="true">')
+  .replace('<link rel="stylesheet" href="/assets/welcome.css" />', `<style>${welcomeCss}</style>`)
+  .replace('<script src="/assets/welcome.js"></script>', `<script>${welcomeJs}</script>`);
+
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <iframe title="Video_GB Gäste-Startseite – Vorschau ohne Pi-Verbindung" srcDoc={previewDocument}
+      sandbox="allow-scripts" className="block h-dvh min-h-[700px] w-full border-0 bg-background" />
   );
 }

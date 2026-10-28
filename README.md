@@ -114,6 +114,63 @@ brücken. Siehe [Wartungs-Modus](#wartungs-modus-heim-wlan-gpio-27).
 Die Startseite (`/`) zeigt die WLAN-Anmeldung und einen Link zum lokalen
 QR-Foto-Scanner — keine Liste, keine Übersicht anderer Gäste.
 
+### Zwei Video-Link-Modi (neu)
+
+Auf der Startseite führt **Admin · PIN** zur vorhandenen PIN-Anmeldung. Unter
+**Video-Link-Modus** wählt der Admin:
+
+| Auswahl | Gäste-Seite | QR-Adresse |
+|---|---|---|
+| **Normal** (Standard) | WLAN-Hinweise und normaler Kamera-Scan; keine Zertifikatsseite | `http://192.168.4.1/v/<event>/<datei>.mp4` |
+| **Mit Zertifikat** | Zertifikatsbereich mit aktuellem Einrichtungsstatus | `https://video.gaestebuch.cloud/v/<event>/<datei>.mp4` |
+
+Die Auswahl wird atomar in `/etc/video-token/video-link.json` gespeichert und
+bleibt bei Neustart und erneuter Installation erhalten. Sie ist **unabhängig**
+vom AP-/Wartungsmodus, GPIO 27 und der LED.
+
+**Wichtig: HTTPS ist noch nicht aktiviert.** Die Domain verwendet derzeit
+Hetzner-Nameserver; der berechtigte Domain-Verwalter und DNS-Zugriff sind noch
+nicht geklärt. Es gibt noch keinen autorisierten Online-Ausstellungsdienst,
+keine Zertifikatsübertragung/-installation und keinen HTTPS-nginx-Listener.
+Der Gäste-Button **Zertifikat erneuern** bleibt deshalb gesperrt. Moduswahl
+allein macht Cloud-QRs nicht über die normale Kamera lokal nutzbar.
+
+Im HTTPS-Modus kann ein angemeldeter Admin bereits eine **Zertifikatsanfrage
+vorbereiten** und als `.csr` herunterladen. Der Fortschritt und die Meldung
+bestätigen nur diese Vorbereitung, **keine abgeschlossene Erneuerung**. OpenSSL
+erzeugt pro Pi einen EC-Schlüssel, der unter `/etc/video-token/tls/device.key`
+mit `0600` verbleibt. Nur die öffentliche Anfrage wird übertragen. Sie beweist
+noch keinen Domainbesitz. Niemals den privaten Schlüssel der Cloud-Webseite
+oder DNS-Zugangsdaten an Gäste verteilen.
+
+Nächster Einrichtungsschritt: Domain-Verwalter freigeben lassen, DNS-01 und
+gerätegebundene Ausstellung autorisieren, anschließend Ketten-/Domain-/Schlüssel-
+und Laufzeitprüfung, atomare nginx-Aktivierung und Rückfall bei Fehlern bauen.
+Ein Zertifikat für dieselbe Cloud-Domain erlaubt auch dem Pi, diese Domain
+darzustellen; die Geräte müssen entsprechend geschützt sein. Offline-Uhrzeit
+und Zertifikatsablauf müssen ebenfalls gelöst werden.
+
+Die bisher versprochene automatische Handy-Brücke ist **nicht garantiert**:
+Wildcard-DNS im Token-WLAN und Handy-Routing können den Internetzugang verhindern.
+Der geplante verlässliche Ablauf benötigt dann einen kurzen WLAN-Wechsel zum
+Online-Abholen und anschließend die Rückkehr zum Token. Die echte Ausstellung
+und der direkte Kamera-Scan müssen später auf dem Pi und iPhone geprüft werden.
+Bis dahin bleibt der bestehende lokale Foto-Scanner für Cloud-QRs verfügbar.
+
+**Diese Version komplett aktualisieren (Wartungsmodus):**
+
+```bash
+cd /opt/guest-video-token && sudo git pull
+sudo bash pi/install.sh
+sudo reboot
+```
+
+Diesmal genügt ein reines Kopieren der Webdateien nicht: auch `video_link.py`
+muss neben `admin-server.py` installiert werden. Videos und vorhandene PIN
+bleiben erhalten. Nach Neustart ohne GPIO-27-Brücke im `Video_GB`-WLAN testen.
+Die Lovable-Vorschau zeigt dieselbe Startseite ausdrücklich ohne Pi-Verbindung;
+Anmeldung und Moduswahl funktionieren nur auf dem Raspberry Pi.
+
 ### Ein Cloud-QR für Cloud und Token (ohne Zertifikat)
 
 Der gedruckte QR kann unverändert dieses Format enthalten:
@@ -178,6 +235,8 @@ Anhang `?raw=1` liefert direkt die MP4-Datei (für externe Downloader).
 Erreichbar unter `http://192.168.4.1/admin.html` (nach Verbindung mit `Video_GB`).
 
 - **Login** per PIN (Standard `1234`), Session-Cookie
+- **Video-Link-Modus** dauerhaft zwischen Normal und HTTPS-Vorbereitung wählen
+- **Zertifikatsanfrage** im HTTPS-Modus lokal vorbereiten und herunterladen (noch keine Online-Erneuerung)
 - **Events** anlegen, umbenennen, löschen
 - **Videos hochladen** — mehrere MP4s parallel, Streaming-Upload mit Fortschrittsbalken
 - **ZIP-Upload** — komplette Event-ZIP hochladen, danach Vorschau der enthaltenen
