@@ -13,6 +13,9 @@
 - Decode QR photos with the vendored jsQR library and validate video URLs in `web/assets/qr-link.js`; keep its local-path rules covered by adjacent Node tests to avoid external redirects.
 - Store video-link selection separately from AP/client boot state in the Pi service; this prevents boot and installer operations from resetting guest URL preferences.
 - Keep certificate private keys on each Pi and transport only CSRs and public chains; renewal must stay unavailable until a domain-authorized issuer and verified activation exist.
+- Issue certificates through a staged ACME broker with immutable owner-approved device CSRs, Pi-signed requests, encrypted account keys, persisted order transitions and a singleton DNS lease; this prevents guest-chosen identities and concurrent TXT replacement.
+- Use explicit file transfers and Wi-Fi switching for certificate renewal; browsers cannot guarantee simultaneous cellular and offline AP access.
+- Activate Pi HTTPS only after system-trust, exact-domain, local-key, validity and served-TLS checks, preserving HTTP recovery and rolling back failed nginx activation.
 - Render the offline welcome page in an explicitly disconnected iframe preview; the hosted preview must never pretend to control the real Pi.
 - Guest welcome pages read the saved Pi mode on load and when revisited, hiding both workflows until a valid result arrives; only PIN-authenticated Admin writes may select the mode, preventing stale or guest-chosen behavior.
 - Guest pages poll certificate status and reveal HTTPS camera instructions only for server-confirmed readiness with a future expiry; this separates certificate activation from the persistent Admin mode.
