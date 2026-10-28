@@ -74,17 +74,81 @@ def ensure_ap():
     run('systemctl', 'restart', 'dnsmasq', check=False, timeout=30)
     run('systemctl', 'reload-or-restart', 'nginx', check=False, timeout=30)
 
+HOSTAPD_CONF = Path('/etc/hostapd/hostapd.conf')
+
+def _station_mac():
+    """Virtual station needs its own (locally administered) MAC; reusing wlan0's
+    MAC makes `ip link set wlsta0 up` fail with 'Name not unique on network'."""
+    try:
+        mac = Path('/sys/class/net/wlan0/address').read_text().strip().split(':')
+        mac[0] = '%02x' % ((int(mac[0], 16) | 0x02) & 0xfe)
+        mac[5] = '%02x' % (int(mac[5], 16) ^ 0x01)
+        return ':'.join(mac)
+    except (OSError, ValueError, IndexError):
+        return None
+
 def interface():
     if Path('/sys/class/net/wlan1').exists():
         return 'wlan1'
     if not Path('/sys/class/net/wlsta0').exists():
-        run('iw', 'dev', 'wlan0', 'interface', 'add', 'wlsta0', 'type', 'managed')
+        mac = _station_mac()
+        run('iw', 'dev', 'wlan0', 'interface', 'add', 'wlsta0', 'type', 'managed', *(('addr', mac) if mac else ()))
     return 'wlsta0'
+
+def bring_up(dev):
+    try:
+        run('ip', 'link', 'set', dev, 'up', timeout=15)
+    except subprocess.CalledProcessError as error:
+        raise ValueError('Zweite WLAN-Verbindung am Token konnte nicht gestartet werden (%s). '
+                         'Token neu starten und erneut versuchen.' % ((error.stderr or '').strip() or dev))
+
+def parse_channels(scan_output):
+    """{ssid: 2.4-GHz channel} from `iw dev X scan` output."""
+    found, freq = {}, None
+    for line in scan_output.splitlines():
+        line = line.strip()
+        if line.startswith('BSS '): freq = None
+        elif line.startswith('freq:'):
+            try: freq = int(float(line.split(':', 1)[1]))
+            except ValueError: freq = None
+        elif line.startswith('SSID:') and freq and 2412 <= freq <= 2472:
+            found.setdefault(line.split(':', 1)[1].strip(), (freq - 2407) // 5)
+    return found
+
+def ap_channel():
+    try:
+        for line in HOSTAPD_CONF.read_text().splitlines():
+            if line.startswith('channel='): return int(line.split('=', 1)[1])
+    except (OSError, ValueError):
+        pass
+    return None
+
+def match_ap_channel(dev, ssid):
+    """The built-in chip can only use one channel: move Video_GB to the home
+    Wi-Fi's channel (guests reconnect automatically after a few seconds)."""
+    if dev != 'wlsta0':
+        return
+    channel = None
+    for _ in range(2):
+        channel = parse_channels(run('iw', 'dev', dev, 'scan', timeout=20, check=False)).get(ssid)
+        if channel: break
+        time.sleep(2)
+    if not channel:
+        raise ValueError('Heim-WLAN „%s“ nicht gefunden (Token braucht 2,4-GHz-WLAN in Reichweite).' % ssid)
+    if channel != ap_channel():
+        text = HOSTAPD_CONF.read_text()
+        lines = [('channel=%d' % channel) if l.startswith('channel=') else l for l in text.splitlines()]
+        HOSTAPD_CONF.write_text('\n'.join(lines) + '\n')
+        run('systemctl', 'restart', 'hostapd', check=False, timeout=30)
+        time.sleep(3)
+        if not Path('/sys/class/net/wlsta0').exists():
+            interface()
+        bring_up(dev)
 
 def scan():
     dev = interface()
     try:
-        run('ip', 'link', 'set', dev, 'up')
+        bring_up(dev)
         names = set()
         for _ in range(2):
             out = run('iw', 'dev', dev, 'scan', timeout=20, check=False)
@@ -101,14 +165,17 @@ def scan():
         ensure_ap()
 
 def connect(cfg):
+    # Clean up a previous attempt FIRST: disconnect() deletes wlsta0, so it must
+    # run before interface() creates the virtual station again.
+    disconnect()
     dev = interface()
     RUN_DIR.mkdir(parents=True, exist_ok=True)
     conf = RUN_DIR / 'home-wifi.conf'
     net = 'key_mgmt=NONE' if cfg['psk'] == '' else 'psk="%s"' % cfg['psk']
     conf.write_text('ctrl_interface=/run/video-token/wpa\ncountry=DE\nnetwork={\n ssid="%s"\n %s\n}\n' % (cfg['ssid'], net))
     os.chmod(conf, 0o600)
-    disconnect()
-    run('ip', 'link', 'set', dev, 'up')
+    bring_up(dev)
+    match_ap_channel(dev, cfg['ssid'])
     run('wpa_supplicant', '-B', '-i', dev, '-c', str(conf), '-P', str(RUN_DIR / 'wpa.pid'))
     for _ in range(30):
         status = run('wpa_cli', '-p', '/run/video-token/wpa', '-i', dev, 'status', check=False)
@@ -203,6 +270,10 @@ def renew_now():
             result = issue()
             STATE['last_success'] = result.get('expires_at')
             _set('done', 100, 'Zertifikat erneuert und HTTPS aktiv.')
+        except subprocess.CalledProcessError as error:
+            detail = (error.stderr or '').strip().splitlines()[-1:] or [str(error.cmd[0])]
+            _set('error', 0, 'Schritt „%s“ fehlgeschlagen: %s. Später automatisch neuer Versuch.'
+                 % (' '.join(error.cmd[:3]), detail[0]))
         except (ValueError, OSError, subprocess.SubprocessError) as error:
             _set('error', 0, str(error) or 'Erneuerung fehlgeschlagen.')
         finally:
