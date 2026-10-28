@@ -39,6 +39,7 @@ PI_INSTALL = {
     "pi/admin-server.py": ("/usr/local/sbin/admin-server.py", 0o755),
     "pi/video_link.py": ("/usr/local/sbin/video_link.py", 0o644),
     "pi/certificate_bridge.py": ("/usr/local/sbin/certificate_bridge.py", 0o644),
+    "pi/home_uplink.py": ("/usr/local/sbin/home_uplink.py", 0o644),
     "pi/switch-mode.sh": ("/usr/local/sbin/switch-mode", 0o755),
     "pi/pi-lock-videos.sh": ("/usr/local/sbin/pi-lock-videos", 0o755),
     "pi/pi-unlock-videos.sh": ("/usr/local/sbin/pi-unlock-videos", 0o755),

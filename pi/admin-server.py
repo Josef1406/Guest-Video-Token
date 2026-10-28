@@ -36,6 +36,7 @@ from urllib.parse import unquote, parse_qs, urlparse
 import video_link
 import update_package
 import certificate_bridge
+import home_uplink
 
 PIN_FILE      = "/etc/video-token/admin.pin"
 UPLOAD_SECRET_FILE = "/etc/video-token/upload.secret"
@@ -399,6 +400,31 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(400, {'error': str(error)})
             except (OSError, subprocess.SubprocessError):
                 return self._json(500, {'error': 'Zertifikat konnte nicht geprüft oder aktiviert werden. Datum/Uhrzeit und Pi-Einrichtung prüfen lassen.'})
+
+        if path in ('/api/public/home-wifi', '/api/public/home-wifi/scan', '/api/public/home-wifi/renew'):
+            # Customer flow: anyone on Video_GB may enter a home Wi-Fi for
+            # renewal; the password is never returned by any endpoint.
+            if self._same_origin_blocked():
+                return self._json(403, {'error': 'Fremder Seitenaufruf nicht erlaubt.'})
+            if video_link.load_mode() != 'https':
+                return self._json(400, {'error': 'Zertifikat-Modus ist nicht eingestellt.'})
+            try:
+                if path.endswith('/scan'):
+                    if home_uplink.LOCK.locked():
+                        return self._json(409, {'error': 'Erneuerung läuft gerade.'})
+                    return self._json(200, {'networks': home_uplink.scan()})
+                if path.endswith('/home-wifi'):
+                    n = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < n <= 2000:
+                        return self._json(413, {'error': 'Anfrage zu groß.'})
+                    data = json.loads(self.rfile.read(n))
+                    home_uplink.save(data.get('ssid'), data.get('psk', ''))
+                home_uplink.start()
+                return self._json(200, home_uplink.status())
+            except (ValueError, TypeError, AttributeError) as error:
+                return self._json(400, {'error': str(error)})
+            except (OSError, subprocess.SubprocessError):
+                return self._json(500, {'error': 'Zweites WLAN-Modul nicht verfügbar.'})
 
         if path in ("/api/admin/video-link", "/api/admin/certificate/prepare"):
             if not is_authed(self.headers):
@@ -820,6 +846,8 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- GET ----
     def do_GET(self):
+        if self.path.split("?", 1)[0] == "/api/public/home-wifi":
+            return self._json(200, home_uplink.status())
         if self.path.split("?", 1)[0] == "/api/public/video-link":
             return self._json(200, video_link.status())
         if self.path == "/api/admin/status":
@@ -832,6 +860,7 @@ class Handler(BaseHTTPRequestHandler):
         self._json(404, {"error": "not found"})
 
 def main():
+    home_uplink.background()
     ThreadingHTTPServer(("127.0.0.1", 8080), Handler).serve_forever()
 
 if __name__ == "__main__":

@@ -539,3 +539,13 @@ Fehlt die Client-Config, siehe [Wartungs-Modus](#wartungs-modus-heim-wlan-gpio-2
 - `wpa_supplicant` ist im AP-Betrieb deaktiviert, damit `hostapd` `wlan0` exklusiv nutzt.
 - Upload-Geschwindigkeit ist durch den Pi-Zero-WLAN-Chip auf ~1–2 MB/s begrenzt.
   Für große Batches lieber Wartungs-Modus + `scp` über LAN oder ZIP-Upload nutzen.
+
+## Zertifikat automatisch über Heim-WLAN erneuern
+
+Im Zertifikat-Modus zeigt die Startseite (`http://192.168.4.1`) das Formular **„Token mit deinem Heim-WLAN verbinden“**. Der Kunde gibt dort einmalig WLAN-Name und Passwort ein. Der Token verbindet sich danach über ein **zweites WLAN-Modul** mit dem Internet und holt sich das Zertifikat selbst. Das Token-WLAN `Video_GB` bleibt dabei an.
+
+- Empfohlen: USB-WLAN-Stick (erscheint als `wlan1`) am Micro-USB-OTG-Adapter.
+- Ohne Stick versucht der Token eine zweite, virtuelle Verbindung über den eingebauten Chip (`wlsta0`). Das klappt nur, wenn das Heim-WLAN auf demselben Kanal wie `Video_GB` (Kanal 6) funkt.
+- Alle 6 Stunden prüft der Token, ob das Zertifikat in weniger als 30 Tagen abläuft, und erneuert es dann automatisch, sobald das Heim-WLAN erreichbar ist.
+- Das Passwort liegt nur auf dem Pi (`/etc/video-token/home-wifi.json`, 0600) und kann über keine Seite ausgelesen werden.
+- Die Erneuerung über Dateien und WLAN-Wechsel am Handy bleibt als Rückfallweg erhalten.

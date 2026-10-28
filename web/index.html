@@ -44,11 +44,26 @@
 <h2>Zertifikat für Cloud-QRs</h2>
 <div class="welcome-alert" role="status"><b id="certificate-state">Einrichtung noch ausstehend</b><br/><span id="certificate-message"></span></div>
 <p id="certificate-validity" class="welcome-note"></p>
+<form id="home-wifi-form" class="welcome-wifi" autocomplete="off">
+<p class="welcome-step-title">Einmalig: Token mit deinem Heim-WLAN verbinden</p>
+<p class="welcome-note">Der Token nutzt dein WLAN nur, um sein Zertifikat automatisch zu erneuern. Du bleibst dabei mit Video_GB verbunden.</p>
+<label for="home-ssid">Heim-WLAN</label>
+<div class="welcome-row"><input id="home-ssid" list="home-ssid-list" required maxlength="32" placeholder="WLAN-Name" /><button id="home-scan" class="welcome-btn welcome-ghost" type="button">Suchen</button></div>
+<datalist id="home-ssid-list"></datalist>
+<label for="home-psk">Passwort</label>
+<input id="home-psk" type="password" maxlength="63" placeholder="WLAN-Passwort" />
+<button id="home-connect" class="welcome-btn welcome-wide" type="submit">Verbinden &amp; Zertifikat erneuern</button>
+</form>
+<div id="home-wifi-saved" hidden><p class="welcome-note">Heim-WLAN: <b id="home-wifi-name"></b> · erneuert automatisch.</p><button id="home-retry" class="welcome-btn welcome-wide" type="button">Jetzt erneuern</button> <button id="home-change" class="welcome-btn welcome-ghost" type="button">Anderes WLAN</button></div>
+<progress id="home-progress" max="100" value="0" hidden aria-label="Zertifikatserneuerung"></progress>
+<p id="home-message" class="welcome-note" role="status" aria-live="polite"></p>
+<details class="welcome-note"><summary>Kein Heim-WLAN verfügbar? Erneuerung über das Handy</summary>
 <button id="renew-certificate" class="welcome-btn welcome-wide" type="button" disabled>Zertifikat erneuern</button>
 <progress id="renewal-progress" max="1" value="0" hidden aria-label="Zertifikatserneuerung"></progress>
 <p id="renewal-message" class="welcome-note" role="status" aria-live="polite"></p>
 <p id="renewal-online" hidden><a href="https://guest-video-share.lovable.app/certificates" target="_blank" rel="noopener">Online-Zertifikatserneuerung öffnen →</a><br/><span class="welcome-note">Falls kein Internet erreichbar ist: WLAN ausschalten und diesen Link in Safari öffnen.</span></p>
 <p><label for="certificate-file">Zurück im Token-WLAN: Zertifikat übertragen</label><br/><input id="certificate-file" type="file" accept=".json,application/json" /></p>
+</details>
 <p class="welcome-note">Nach erfolgreicher Aktivierung erscheint hier automatisch die Anleitung zum Kamera-Scan. Falls dieses WLAN-Fenster geschlossen wird, öffne in Safari http://192.168.4.1.</p>
 <p><a href="/scan.html">Bis dahin: Cloud-QR als Foto öffnen →</a></p>
 </section>
@@ -57,5 +72,6 @@
 <noscript><p>Bitte aktiviere JavaScript für den Zertifikatsstatus. <a href="/admin.html">Admin</a> · <a href="/scan.html">QR-Foto lesen</a></p></noscript>
 <script src="/assets/welcome.js"></script>
 <script src="/assets/certificate-bridge.js"></script>
+<script src="/assets/home-wifi.js"></script>
 </body>
 </html>
