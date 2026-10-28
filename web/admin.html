@@ -136,6 +136,19 @@
     </div>
 
     <div class="card">
+      <h3>Software aktualisieren</h3>
+      <p class="muted" id="updateInstalled">Installierte Version: unbekannt</p>
+      <p class="muted">Lädt die aktuelle Version direkt von GitHub — dafür braucht das Handy kurz Internet (z.&nbsp;B. Mobilfunk), der Token selbst braucht keins. Videos, PIN und Einstellungen bleiben erhalten.</p>
+      <div class="row">
+        <button id="btnUpdate">Jetzt aktualisieren</button>
+        <button id="btnRestart" class="secondary">Dienste neu starten</button>
+        <button id="btnReboot" class="danger">Pi neu starten</button>
+      </div>
+      <progress id="updateProgress" max="1" value="0" hidden aria-label="Update-Fortschritt"></progress>
+      <p id="updateMsg" class="muted" role="status" aria-live="polite"></p>
+    </div>
+
+    <div class="card">
       <h3>Events &amp; Videos</h3>
       <div id="eventsList"><p class="muted">–</p></div>
     </div>
