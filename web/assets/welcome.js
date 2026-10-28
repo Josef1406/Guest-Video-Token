@@ -2,6 +2,8 @@
   const state = document.getElementById('welcome-state');
   const normal = document.getElementById('normal-mode');
   const secure = document.getElementById('https-mode');
+  const cloud = document.getElementById('cloud-mode');
+  const local = document.getElementById('local-mode');
   const instruction = document.getElementById('scan-instruction');
   const instructions = document.getElementById('video-instructions');
   const directInstruction = 'Öffne die normale Handy-Kamera und scanne den QR-Code auf deinem Video-Botschaft-Aufkleber.';
@@ -27,22 +29,22 @@
     if (!response.ok) throw new Error('Token-Einstellungen nicht erreichbar.');
     const settings = await response.json();
     if (currentRequest !== requestId) return;
-    if (settings.mode !== 'normal' && settings.mode !== 'https') {
+    if (!['normal', 'cloud', 'local', 'https'].includes(settings.mode)) {
       throw new Error('Token-Einstellung ungültig. Bitte den Admin verständigen.');
     }
-    const https = settings.mode === 'https';
+    const mode = settings.mode;
+    const https = mode === 'https';
     const certificate = settings.certificate;
     const expiry = Date.parse(certificate?.expires_at);
     const ready = https && certificate?.ready === true && Number.isFinite(expiry) && expiry > Date.now();
-    state.textContent = https ? (ready ? 'Zertifikat-Modus · bereit zum Scannen' : 'Zertifikat-Modus · noch nicht bereit') : 'Direkt-Modus · lokale Video-QRs';
-    normal.hidden = https && !ready;
+    state.textContent = https ? (ready ? 'Bereit zum Scannen' : 'Noch nicht bereit') : 'Bereit';
+    // Exactly one guest workflow, chosen by the Admin.
+    normal.hidden = mode !== 'normal';
+    cloud.hidden = mode !== 'cloud';
+    local.hidden = !(mode === 'local' || ready);
     secure.hidden = !https || ready;
     instructions.hidden = https && !ready;
-    document.getElementById('scan-ready-title').textContent = ready ? 'Zertifikat aktiv. Dein Video ist bereit.' : 'Dein QR-Code ist der direkte Weg.';
-    document.getElementById('scan-ready-message').textContent = ready
-      ? 'Bleibe im WLAN Video_GB. Öffne die normale Handy-Kamera und scanne den Cloud-QR auf deinem Video-Botschaft-Aufkleber.'
-      : 'Kamera öffnen, QR-Code scannen – dein Video öffnet sich direkt vom Token. Dafür müssen die mobilen Daten eingeschaltet sein.';
-    instruction.textContent = directInstruction;
+    instruction.textContent = mode === 'normal' ? 'Tippe unten auf „QR-Code fotografieren“.' : directInstruction;
     if (https) {
       document.getElementById('renew-certificate').disabled = certificate?.renewal_available !== true;
       document.getElementById('certificate-message').textContent = certificate?.message || 'Bitte den Admin wegen der Zertifikatseinrichtung verständigen.';
@@ -54,7 +56,7 @@
     }
   } catch (error) {
     if (currentRequest !== requestId) return;
-    normal.hidden = true;
+    normal.hidden = cloud.hidden = local.hidden = true;
     secure.hidden = true;
     instructions.hidden = true;
     state.textContent = error.message + ' Bitte die Seite neu laden oder den Admin verständigen.';

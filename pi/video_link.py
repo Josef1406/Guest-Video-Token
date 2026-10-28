@@ -14,12 +14,15 @@ DOMAIN = "video.gaestebuch.cloud"
 CONFIG_FILE = Path("/etc/video-token/video-link.json")
 TLS_DIR = Path("/etc/video-token/tls")
 LOCK = threading.Lock()
+# normal = Cloud-QR per Foto lesen, cloud = Cloud-Seite leitet weiter,
+# local = QR mit http://192.168.4.1 gedruckt, https = Zertifikat (alt).
+MODES = ("normal", "cloud", "local", "https")
 
 
 def load_mode():
     try:
         data = json.loads(CONFIG_FILE.read_text())
-        if data.get("mode") in ("normal", "https"):
+        if data.get("mode") in MODES:
             return data["mode"]
     except (OSError, ValueError, AttributeError):
         pass
@@ -27,7 +30,7 @@ def load_mode():
 
 
 def save_mode(mode):
-    if mode not in ("normal", "https"):
+    if mode not in MODES:
         raise ValueError("Ungültiger Video-Link-Modus")
     with LOCK:
         CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -69,7 +72,7 @@ def status():
     from certificate_bridge import certificate_status
     return {
         "mode": mode,
-        "base_url": "http://192.168.4.1" if mode == "normal" else f"https://{DOMAIN}",
+        "base_url": f"https://{DOMAIN}" if mode == "https" else "http://192.168.4.1",
         "certificate": certificate_status() if mode == "https" else None,
     }
 
