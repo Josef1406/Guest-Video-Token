@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const form = $('home-wifi-form'), saved = $('home-wifi-saved'), bar = $('home-progress'), msg = $('home-message');
   if (!form) return;
-  let timer = null;
+  let timer = null, wasBusy = false;
   async function call(path, body) {
     const r = await fetch(path, { method: body === undefined ? 'GET' : 'POST', cache: 'no-store',
       headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -20,13 +20,16 @@
     bar.value = s.progress || 0;
     msg.textContent = s.message || '';
     if (s.phase === 'done') window.dispatchEvent(new Event('pageshow'));
+    wasBusy = !!s.busy;
     clearTimeout(timer);
     if (s.busy) timer = setTimeout(refresh, 2000);
   }
   async function refresh() {
     try { show(await call('/api/public/home-wifi')); }
     catch (e) {
-      msg.textContent = 'Verbindung zum Token unterbrochen – bitte kurz warten oder neu mit „Video_GB" verbinden.';
+      msg.textContent = wasBusy
+        ? 'Der Token erneuert gerade das Zertifikat, „Video_GB" ist dafür 2–5 Minuten weg. Danach in den WLAN-Einstellungen wieder „Video_GB" wählen und diese Seite öffnen.'
+        : 'Verbindung zum Token unterbrochen – bitte kurz warten oder neu mit „Video_GB" verbinden.';
       clearTimeout(timer);
       timer = setTimeout(refresh, 5000);
     }

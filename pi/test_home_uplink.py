@@ -50,15 +50,39 @@ class HomeUplinkRules(unittest.TestCase):
         ap.assert_called_once()
     def test_connect_cleans_up_before_creating_station(self):
         order = []
-        with patch.object(up, 'disconnect', side_effect=lambda: order.append('disconnect')), \
+        with patch.object(up, 'disconnect', side_effect=lambda **k: order.append('disconnect')), \
              patch.object(up, 'interface', side_effect=lambda: order.append('interface') or 'wlsta0'), \
              patch.object(up, 'bring_up', side_effect=lambda d: (_ for _ in ()).throw(ValueError('stop'))), \
              patch.object(up, 'RUN_DIR', Path(self.tmp.name)):
             with self.assertRaises(ValueError): up.connect({'ssid': 'Heim', 'psk': 'geheim123'})
         self.assertEqual(order, ['disconnect', 'interface'])
-    def test_parse_channels_reads_2ghz_channel(self):
-        out = 'BSS aa(on wlsta0)\n\tfreq: 2462\n\tSSID: Heim\nBSS bb\n\tfreq: 5180\n\tSSID: Fuenf\n'
-        self.assertEqual(up.parse_channels(out), {'Heim': 11})
+    def _renew_with(self, connect_effect):
+        order = []
+        up.save('Heim', 'geheim123')
+        with patch.object(up.video_link, 'load_mode', return_value='https'), \
+             patch.object(up, 'shared_radio', return_value=True), \
+             patch.object(up.time, 'sleep'), \
+             patch.object(up, 'pause_ap', side_effect=lambda: order.append('pause')), \
+             patch.object(up, 'connect', side_effect=lambda c: order.append('connect') or connect_effect()), \
+             patch.object(up, 'issue', side_effect=lambda: order.append('issue') or {'expires_at': 'x'}), \
+             patch.object(up, 'disconnect', side_effect=lambda: order.append('restore')):
+            up.renew_now()
+        return order
+    def test_internal_radio_pauses_ap_before_connecting_and_restores_after(self):
+        self.assertEqual(self._renew_with(lambda: None), ['pause', 'connect', 'issue', 'restore'])
+        self.assertEqual(up.STATE['phase'], 'done')
+    def test_ap_is_restored_even_when_home_wifi_fails(self):
+        def fail(): raise ValueError('Heim-WLAN nicht erreichbar')
+        self.assertEqual(self._renew_with(fail), ['pause', 'connect', 'restore'])
+        self.assertEqual(up.STATE['phase'], 'error')
+    def test_pause_arms_safety_timer_before_stopping_ap(self):
+        cmds = []
+        with patch.object(up, 'run', side_effect=lambda *a, **k: cmds.append(a) or ''):
+            up.pause_ap()
+        timer = next(i for i, c in enumerate(cmds) if c[0] == 'systemd-run')
+        stop = cmds.index(('systemctl', 'stop', 'dnsmasq', 'hostapd'))
+        self.assertLess(timer, stop)
+        self.assertIn('/usr/local/sbin/switch-mode', cmds[timer])
     def test_ensure_ap_restarts_hostapd_only_when_down(self):
         states = iter([1, 0])  # first check: down, second: up
         cmds = []
