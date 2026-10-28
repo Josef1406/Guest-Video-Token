@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CertificatesRouteImport } from './routes/certificates'
+import { Route as ApiPublicCertificatesRouteImport } from './routes/api/public/certificates'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CertificatesRoute = CertificatesRouteImport.update({
+  id: '/certificates',
+  path: '/certificates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCertificatesRoute = ApiPublicCertificatesRouteImport.update({
+  id: '/api/public/certificates',
+  path: '/api/public/certificates',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/certificates': typeof CertificatesRoute
+  '/api/public/certificates': typeof ApiPublicCertificatesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/certificates': typeof CertificatesRoute
+  '/api/public/certificates': typeof ApiPublicCertificatesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/certificates': typeof CertificatesRoute
+  '/api/public/certificates': typeof ApiPublicCertificatesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/certificates' | '/api/public/certificates'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/certificates' | '/api/public/certificates'
+  id: '__root__' | '/' | '/certificates' | '/api/public/certificates'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CertificatesRoute: typeof CertificatesRoute
+  ApiPublicCertificatesRoute: typeof ApiPublicCertificatesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/certificates': {
+      id: '/certificates'
+      path: '/certificates'
+      fullPath: '/certificates'
+      preLoaderRoute: typeof CertificatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/certificates': {
+      id: '/api/public/certificates'
+      path: '/api/public/certificates'
+      fullPath: '/api/public/certificates'
+      preLoaderRoute: typeof ApiPublicCertificatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CertificatesRoute: CertificatesRoute,
+  ApiPublicCertificatesRoute: ApiPublicCertificatesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

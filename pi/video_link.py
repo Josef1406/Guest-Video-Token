@@ -46,16 +46,11 @@ def save_mode(mode):
 
 def status():
     mode = load_mode()
+    from certificate_bridge import certificate_status
     return {
         "mode": mode,
         "base_url": "http://192.168.4.1" if mode == "normal" else f"https://{DOMAIN}",
-        "certificate": {
-            "state": "setup_required",
-            "ready": False,
-            "renewal_available": False,
-            "expires_at": None,
-            "message": "Die Online-Ausstellung ist noch nicht eingerichtet. Der Domain-Verwalter muss den DNS-Zugriff freigeben.",
-        } if mode == "https" else None,
+        "certificate": certificate_status() if mode == "https" else None,
     }
 
 
