@@ -29,5 +29,37 @@ class HomeUplinkRules(unittest.TestCase):
             with self.assertRaises(ValueError):
                 up.issue(lambda b: {'state': 'complete', 'environment': 'staging', 'chain': 'C'},
                          lambda b: self.fail('activated'), lambda s: None)
+    def test_scan_restores_ap_after_borrowing_internal_chip(self):
+        calls = []
+        def fake_run(*args, **kw):
+            calls.append(args)
+            return 'SSID: Heim\n' if 'scan' in args else ''
+        with patch.object(up, 'interface', return_value='wlsta0'), \
+             patch.object(up, 'run', side_effect=fake_run), \
+             patch.object(up, 'ensure_ap') as ap, \
+             patch.object(up.Path, 'exists', return_value=True):
+            self.assertEqual(up.scan(), ['Heim'])
+        ap.assert_called_once()
+        self.assertIn(('iw', 'dev', 'wlsta0', 'del'), calls)
+    def test_scan_restores_ap_even_on_error(self):
+        with patch.object(up, 'interface', return_value='wlsta0'), \
+             patch.object(up, 'run', side_effect=OSError('boom')), \
+             patch.object(up, 'ensure_ap') as ap, \
+             patch.object(up.Path, 'exists', return_value=True):
+            with self.assertRaises(OSError): up.scan()
+        ap.assert_called_once()
+    def test_ensure_ap_restarts_hostapd_only_when_down(self):
+        states = iter([1, 0])  # first check: down, second: up
+        cmds = []
+        def fake_run(*args, **kw):
+            cmds.append(args); return ''
+        class FakeCompleted:
+            def __init__(self, rc): self.returncode = rc
+        with patch.object(up.subprocess, 'run', side_effect=lambda *a, **k: FakeCompleted(next(states))), \
+             patch.object(up, 'run', side_effect=fake_run), \
+             patch.object(up.Path, 'exists', return_value=False):
+            up.ensure_ap()
+        self.assertIn(('systemctl', 'restart', 'hostapd'), cmds)
+        self.assertIn(('systemctl', 'restart', 'dnsmasq'), cmds)
 
 if __name__ == '__main__': unittest.main()
