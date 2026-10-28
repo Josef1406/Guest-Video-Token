@@ -50,8 +50,9 @@
     <section class="card" aria-labelledby="link-mode-title">
       <h2 id="link-mode-title">Video-Link-Modus</h2>
       <form id="linkModeForm">
-        <p><label><input type="radio" name="linkMode" value="normal" /> <b>Normal</b> · http://192.168.4.1 · keine Zertifikatsseite</label></p>
-        <p><label><input type="radio" name="linkMode" value="https" /> <b>Mit Zertifikat</b> · https://video.gaestebuch.cloud</label></p>
+        <p><label><input type="radio" name="linkMode" value="normal" /> <b>Normal</b> · Cloud-QR (https) wird am Token fotografiert · klappt immer</label></p>
+        <p><label><input type="radio" name="linkMode" value="cloud" /> <b>Cloud</b> · Cloud-QR mit der Kamera scannen · Gast braucht mobile Daten</label></p>
+        <p><label><input type="radio" name="linkMode" value="local" /> <b>Lokaler QR</b> · QR-Codes wurden mit http://192.168.4.1 gedruckt</label></p>
         <button id="saveLinkMode" type="submit">Modus speichern</button>
       </form>
       <p id="linkModeMsg" class="muted" role="status" aria-live="polite"></p>
@@ -565,7 +566,7 @@ let timer=null;
 let csrUrl = null;
 function renderVideoLink(settings) {
   if (!settings) return;
-  const radio = document.querySelector(`input[name="linkMode"][value="${settings.mode === 'https' ? 'https' : 'normal'}"]`);
+  const radio = document.querySelector(`input[name="linkMode"][value="${settings.mode}"]`);
   if (radio && !document.getElementById('linkModeForm').contains(document.activeElement)) radio.checked = true;
   document.getElementById('certificateSetup').hidden = settings.mode !== 'https';
   document.getElementById('certAdminStatus').textContent = settings.certificate?.message || '';
@@ -582,7 +583,7 @@ document.getElementById('linkModeForm').addEventListener('submit', async e => {
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || 'Speichern fehlgeschlagen.');
     renderVideoLink(data);
-    msg.textContent = data.mode === 'normal' ? 'Normalmodus gespeichert. Keine Zertifikatsseite für Gäste.' : 'HTTPS-Modus gespeichert. Zertifikatseinrichtung noch erforderlich.';
+    msg.textContent = ({normal:'Normal gespeichert: Gäste fotografieren den QR-Code am Token.', cloud:'Cloud gespeichert: Gäste scannen den QR-Code mit der Kamera.', local:'Lokaler QR gespeichert: Gäste scannen den lokalen QR-Code mit der Kamera.'})[data.mode] || 'Gespeichert.';
   } catch (error) { msg.textContent = error.message; }
   finally { btn.disabled = false; }
 });
