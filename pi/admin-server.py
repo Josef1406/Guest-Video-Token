@@ -20,12 +20,21 @@ Booth (PIN via Header, für Foto-/Videobooth-Uploads):
   PUT  /api/booth/upload/<event>/<file.mp4>
        Header: X-Booth-Pin: <pin>   (alternativ Authorization: Bearer <pin>)
        Body:   MP4-Bytes (streamed). Event wird bei Bedarf angelegt.
+
+Software-Update (PIN-geschützt, ohne Wartungsmodus):
+  PUT  /api/admin/update-payload    JSON {"sha", "files": {pfad: {b64, sha}}}
+                                    von der Admin-Seite (geladen von GitHub);
+                                    prüft, installiert web/ + pi/ und sichert
+                                    die installierte Version.
+  POST /api/admin/update/restart    nginx + Admin-Dienst neu starten
+  POST /api/admin/reboot            Pi neu starten
 """
 import json, os, re, subprocess, secrets, time, shutil, hmac, shlex, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from http.cookies import SimpleCookie
 from urllib.parse import unquote, parse_qs, urlparse
 import video_link
+import update_package
 
 PIN_FILE      = "/etc/video-token/admin.pin"
 UPLOAD_SECRET_FILE = "/etc/video-token/upload.secret"
