@@ -57,6 +57,23 @@ def load():
     except (OSError, ValueError, KeyError, TypeError):
         return None
 
+AP_IP = '192.168.4.1/24'
+
+def _ap_alive():
+    return subprocess.run(['systemctl', 'is-active', '--quiet', 'hostapd'],
+                          capture_output=True).returncode == 0
+
+def ensure_ap():
+    """Bring Video_GB back after the internal chip was borrowed for scan/uplink.
+    With a USB stick (wlan1) the AP is untouched and this is a no-op."""
+    if Path('/sys/class/net/wlan1').exists() and _ap_alive():
+        return
+    run('ip', 'addr', 'replace', AP_IP, 'dev', 'wlan0', check=False)
+    if not _ap_alive():
+        run('systemctl', 'restart', 'hostapd', check=False, timeout=30)
+    run('systemctl', 'restart', 'dnsmasq', check=False, timeout=30)
+    run('systemctl', 'reload-or-restart', 'nginx', check=False, timeout=30)
+
 def interface():
     if Path('/sys/class/net/wlan1').exists():
         return 'wlan1'
@@ -66,14 +83,19 @@ def interface():
 
 def scan():
     dev = interface()
-    run('ip', 'link', 'set', dev, 'up')
-    names = set()
-    for _ in range(2):
-        out = run('iw', 'dev', dev, 'scan', timeout=20, check=False)
-        names |= {line.split('SSID:', 1)[1].strip() for line in out.splitlines() if 'SSID:' in line}
-        if names: break
-        time.sleep(2)
-    return sorted(n for n in names if n and n != 'Video_GB')
+    try:
+        run('ip', 'link', 'set', dev, 'up')
+        names = set()
+        for _ in range(2):
+            out = run('iw', 'dev', dev, 'scan', timeout=20, check=False)
+            names |= {line.split('SSID:', 1)[1].strip() for line in out.splitlines() if 'SSID:' in line}
+            if names: break
+            time.sleep(2)
+        return sorted(n for n in names if n and n != 'Video_GB')
+    finally:
+        if dev == 'wlsta0' and Path('/sys/class/net/wlsta0').exists():
+            run('iw', 'dev', 'wlsta0', 'del', check=False)
+        ensure_ap()
 
 def connect(cfg):
     dev = interface()
