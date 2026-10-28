@@ -203,6 +203,8 @@ async function loadStatus() {
     : `<tr><td colspan="3" class="muted">Keine Geräte verbunden</td></tr>`;
 
   renderLock(s.lock);
+  window._installedUpdate = s.installed_update || null;
+  renderInstalledUpdate(s.installed_update);
 }
 
 function renderEvents(events) {
