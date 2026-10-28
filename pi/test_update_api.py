@@ -75,9 +75,14 @@ class UpdateApiRules(unittest.TestCase):
         return result
 
     def login(self):
-        code, _, cookie = self.request("POST", "/api/admin/login", {"pin": "1234"})[0:3] \
-            if False else (self.request("POST", "/api/admin/login", {"pin": "1234"}))
-        self.assertEqual(code, 200)
+        conn = HTTPConnection("127.0.0.1", self.server.server_port)
+        conn.request("POST", "/api/admin/login", body=json.dumps({"pin": "1234"}),
+                     headers={"Content-Type": "application/json"})
+        response = conn.getresponse()
+        response.read()
+        cookie = response.getheader("Set-Cookie") or ""
+        conn.close()
+        self.assertEqual(response.status, 200)
         return cookie.split(";", 1)[0]
 
     def test_update_requires_pin(self):
