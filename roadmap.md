@@ -4,7 +4,7 @@
 - [x] Link-Regeln testen und Foto → Video im Browser prüfen.
 
 # Zwei Video-Link-Modi und Zertifikatserneuerung
-- [ ] Gästeablauf korrigieren: Kamera-Anleitung im Direkt-Modus sofort, im HTTPS-Modus erst nach bestätigter Zertifikatsaktivierung; Statuswechsel automatisch prüfen.
+- [x] Gästeablauf korrigieren: Kamera-Anleitung im Direkt-Modus sofort, im HTTPS-Modus erst nach bestätigter Zertifikatsaktivierung; Statuswechsel automatisch prüfen (Browser mit simuliertem Status und Regeltests bestanden; echte Aktivierung weiterhin offen).
 - [x] Startseite ausschließlich nach gespeicherter Admin-Auswahl anzeigen; Gastschutz und dauerhafte Auswahl prüfen.
 - [x] DNS-Anbieter ermittelt (Hetzner-Nameserver); Grenzen der Handy-Brücke und Schlüsseltransport geklärt.
 - [x] PIN-geschützte dauerhafte Moduswahl und passende Gäste-Startseiten umsetzen.
