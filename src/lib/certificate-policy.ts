@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-import { Pkcs10CertificateRequest, SubjectAlternativeNameExtension } from '@peculiar/x509';
 import { z } from 'zod';
 
 export const certificateDomain = 'video.gaestebuch.cloud';
@@ -14,6 +12,9 @@ export function decode(data: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(data.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 }
 export async function inspectCsr(pem: string) {
+  // Load lazily so the reflect polyfill is installed before tsyringe initializes.
+  await import('reflect-metadata');
+  const { Pkcs10CertificateRequest, SubjectAlternativeNameExtension } = await import('@peculiar/x509');
   const csr = new Pkcs10CertificateRequest(pem);
   if (!await csr.verify(crypto)) throw new Error('Signatur der Pi-Anfrage ungültig.');
   const san = csr.getExtension('2.5.29.17');
