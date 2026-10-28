@@ -73,6 +73,7 @@ install -m 0755 "$REPO_DIR/pi-lock-videos.sh"    /usr/local/sbin/pi-lock-videos
 install -m 0755 "$REPO_DIR/pi-unlock-videos.sh"  /usr/local/sbin/pi-unlock-videos
 install -m 0755 "$REPO_DIR/admin-server.py"      /usr/local/sbin/admin-server.py
 install -m 0644 "$REPO_DIR/video_link.py"        /usr/local/sbin/video_link.py
+install -m 0644 "$REPO_DIR/update_package.py"    /usr/local/sbin/update_package.py
 install -m 0755 "$REPO_DIR/boot-mode.sh"         /usr/local/sbin/video-token-bootmode
 
 mkdir -p /var/lib/video-token
