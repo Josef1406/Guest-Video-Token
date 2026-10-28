@@ -45,7 +45,7 @@ test('Verified valid HTTPS activation automatically reveals camera scan without 
   const view = await welcome('https');
   await view.activated({ ready: true, expires_at: new Date(Date.now() + 86400000).toISOString() });
   assert.equal(view.nodes.get('https-mode').hidden, true);
-  assert.equal(view.nodes.get('normal-mode').hidden, false);
+  assert.equal(view.nodes.get('local-mode').hidden, false);
   assert.equal(view.nodes.get('video-instructions').hidden, false);
 });
 
@@ -94,3 +94,11 @@ test('Guests can renew only when the Pi reports an available local identity', as
   await view.activated({ ready: false, renewal_available: true });
   assert.equal(view.nodes.get('renew-certificate').disabled, false);
 });
+for (const [mode, shown] of [['normal', 'normal-mode'], ['cloud', 'cloud-mode'], ['local', 'local-mode']]) {
+  test(`Admin mode ${mode} shows only its own guest workflow`, async () => {
+    const { nodes } = await welcome(mode);
+    for (const id of ['normal-mode', 'cloud-mode', 'local-mode', 'https-mode']) {
+      assert.equal(nodes.get(id).hidden, id !== shown, id);
+    }
+  });
+}
