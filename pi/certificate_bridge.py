@@ -134,7 +134,7 @@ def activate(bundle):
                 if old_config is None: TLS_INCLUDE.unlink(missing_ok=True)
                 else: TLS_INCLUDE.write_bytes(old_config)
                 try: run('nginx', '-t'); run('systemctl', 'reload', 'nginx')
-                except subprocess.SubprocessError: pass
+                except (OSError, subprocess.SubprocessError): pass
             shutil.rmtree(staging, ignore_errors=True)
             raise
 

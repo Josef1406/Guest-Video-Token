@@ -135,12 +135,51 @@ werden. Gäste lesen lediglich den gespeicherten Modus. Beim Zurückkehren
 zur Startseite wird die Auswahl erneut vom Pi geladen; solange sie nicht
 erreichbar ist, wird kein Video-Link-Modus angezeigt.
 
-**Wichtig: HTTPS ist noch nicht aktiviert.** Die Domain verwendet derzeit
-Hetzner-Nameserver; der berechtigte Domain-Verwalter und DNS-Zugriff sind noch
-nicht geklärt. Es gibt noch keinen autorisierten Online-Ausstellungsdienst,
-keine Zertifikatsübertragung/-installation und keinen HTTPS-nginx-Listener.
-Der Gäste-Button **Zertifikat erneuern** bleibt deshalb gesperrt. Moduswahl
-allein macht Cloud-QRs nicht über die normale Kamera lokal nutzbar.
+**Wichtig: Echte HTTPS-Ausstellung ist noch nicht freigeschaltet.** Der
+Hetzner-API-Zugang zur korrekten Zone wurde lesend geprüft. Der neue
+Online-Aussteller läuft standardmäßig gegen Let's Encrypt Staging.
+Testzertifikate werden vom Pi ausdrücklich abgelehnt. Erst nach verifizierter
+Eigentümerfreigabe, Test-Ausstellung, Veröffentlichung und echtem Pi-Test
+darf `CERTIFICATE_ISSUER_ENV=production` gesetzt werden. Moduswahl allein
+macht Cloud-QRs nicht über die normale Kamera lokal nutzbar.
+
+### Neuer Handy-Ablauf und einmalige Gerätefreigabe
+
+1. Auf dem aktualisierten Pi als PIN-Admin den Zertifikat-Modus einstellen.
+2. **Token-Freigabeanfrage herunterladen** wählen. Der lokale P-256-Schlüssel
+   bleibt auf dem Pi; nur Geräte-ID und öffentliche CSR werden exportiert.
+3. Mit Internet `https://guest-video-share.lovable.app/certificates` öffnen,
+   **Eigentümer · Token-Freigabe** wählen und mit Lovable anmelden.
+4. Das angemeldete Konto muss durch den berechtigten Projekt-Verwalter in
+   `certificate_operators` freigegeben werden. Es gibt keine automatische
+   Erstbenutzer-Adminvergabe. Erst dann die heruntergeladene Anfrage genehmigen.
+5. Auf der lokalen Gäste-Startseite **Zertifikat erneuern** wählen. Die
+   signierte Anfrage bleibt bis zur Aktivierung gespeichert und kann erneut
+   verwendet werden; Gäste wählen weder CSR noch Domain.
+6. WLAN kurz verlassen, die Online-Seite in Safari öffnen und die Anfrage
+   auswählen. Der Fortschritt zeigt Domainprüfung und Ausstellung.
+7. Nach erfolgreicher **Produktions**-Ausstellung die öffentliche Zertifikatsdatei
+   herunterladen, erneut mit Video_GB verbinden und unter
+   **Zertifikat übertragen** auf der lokalen Startseite auswählen.
+
+`pi/certificate_bridge.py` prüft System-Vertrauenskette, exakten SAN,
+Pi-Schlüssel, Laufzeit und die tatsächlich über localhost/SNI ausgelieferte
+TLS-Verbindung. Erst dann wird HTTPS als aktiv gemeldet. nginx-Fehler stellen
+die vorherige Konfiguration wieder her. HTTP bleibt zur Wiederherstellung
+erreichbar; der HTTPS-Server liefert keine Admin-API oder Eventliste.
+Der Pi braucht eine ausreichend korrekte Systemzeit und vorhandene
+CA-Vertrauensanker. Handyzeit wird nicht übernommen, TLS-Prüfung niemals
+deaktiviert.
+
+Der Online-Aussteller speichert Gerätefreigaben und Aufträge in Lovable Cloud,
+verschlüsselt sein separates ACME-Konto und bearbeitet nur den festen
+TXT-Prüfnamen `_acme-challenge.video`. Bestehende TXT-Werte werden nicht
+ersetzt. Ein global aktiver Auftrag verhindert parallele DNS-Veränderungen.
+Jeder Klick/Statusabruf setzt den gespeicherten Auftrag fort. Bei geschlossenem
+Browser bleibt der Auftrag gespeichert; er muss mit derselben Anfrage fortgesetzt
+werden. Ein geschützter Recovery-Endpunkt ist vorbereitet, jedoch **kein
+automatischer Zeitplan aktiviert**. Echte Aussteller- und Hosting-Tests sowie
+die physische Pi-/iPhone-Abnahme stehen noch aus.
 
 Im HTTPS-Modus kann ein angemeldeter Admin bereits eine **Zertifikatsanfrage
 vorbereiten** und als `.csr` herunterladen. Der Fortschritt und die Meldung
@@ -150,9 +189,9 @@ mit `0600` verbleibt. Nur die öffentliche Anfrage wird übertragen. Sie beweist
 noch keinen Domainbesitz. Niemals den privaten Schlüssel der Cloud-Webseite
 oder DNS-Zugangsdaten an Gäste verteilen.
 
-Nächster Einrichtungsschritt: Domain-Verwalter freigeben lassen, DNS-01 und
-gerätegebundene Ausstellung autorisieren, anschließend Ketten-/Domain-/Schlüssel-
-und Laufzeitprüfung, atomare nginx-Aktivierung und Rückfall bei Fehlern bauen.
+Nächster Einrichtungsschritt: Eigentümerkonto anmelden und autorisieren,
+Test-Ausstellung prüfen, Online-Dienst veröffentlichen und Pi aktualisieren;
+anschließend echte Ausstellung und physische Aktivierung abnehmen.
 Ein Zertifikat für dieselbe Cloud-Domain erlaubt auch dem Pi, diese Domain
 darzustellen; die Geräte müssen entsprechend geschützt sein. Offline-Uhrzeit
 und Zertifikatsablauf müssen ebenfalls gelöst werden.

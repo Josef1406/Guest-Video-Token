@@ -38,7 +38,7 @@ function CertificatePage() {
         const result = await response.json();
         if (!response.ok || result.state === 'failed') throw new Error(result.error || 'Erneuerung fehlgeschlagen.');
         setStep(Math.max(0, stages.indexOf(result.state)));
-        setMessage(result.error || labels[result.state] || 'Ausstellung wird geprüft…');
+        setMessage(labels[result.state] || 'Ausstellung wird geprüft…');
         if (result.state === 'complete' && result.chain) {
           setBundle(JSON.stringify({ version: 1, device_id: result.device_id, environment: result.environment, chain: result.chain }));
           setMessage(result.environment === 'production' ? 'Zertifikat bereit. Herunterladen und im Token-WLAN auf der Startseite übertragen.' : 'Test-Ausstellung erfolgreich. Dieses Testzertifikat kann am Pi nicht aktiviert werden. Die echte Ausstellung ist noch gesperrt.');

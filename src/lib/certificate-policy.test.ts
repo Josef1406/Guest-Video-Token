@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { describe, it, expect } from 'vitest';
 import { Pkcs10CertificateRequestGenerator, SubjectAlternativeNameExtension } from '@peculiar/x509';
 import { inspectCsr, certificateDomain, encode, verifyRenewal, signatureRaw } from './certificate-policy';
