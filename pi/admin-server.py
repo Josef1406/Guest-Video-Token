@@ -208,6 +208,7 @@ def build_status():
     return {
         "mode":       get_mode(),
         "video_link": video_link.status(),
+        "installed_update": update_package.installed_version(),
         "hostname":   os.uname().nodename,
         "events":     events,
         "video_count": sum(e["count"] for e in events),
