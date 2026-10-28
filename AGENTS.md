@@ -15,3 +15,4 @@
 - Keep certificate private keys on each Pi and transport only CSRs and public chains; renewal must stay unavailable until a domain-authorized issuer and verified activation exist.
 - Render the offline welcome page in an explicitly disconnected iframe preview; the hosted preview must never pretend to control the real Pi.
 - Guest welcome pages read the saved Pi mode on load and when revisited, hiding both workflows until a valid result arrives; only PIN-authenticated Admin writes may select the mode, preventing stale or guest-chosen behavior.
+- Guest pages poll certificate status and reveal HTTPS camera instructions only for server-confirmed readiness with a future expiry; this separates certificate activation from the persistent Admin mode.

@@ -6,6 +6,7 @@
   const instructions = document.getElementById('video-instructions');
   const directInstruction = 'Öffne die normale Handy-Kamera und scanne den QR-Code auf deinem Video-Botschaft-Aufkleber.';
   const isPreview = document.documentElement.dataset.preview === 'true';
+  let requestId = 0;
   if (isPreview) {
     state.textContent = 'Vorschau · keine Verbindung zum Raspberry Pi';
     normal.hidden = false;
@@ -19,29 +20,42 @@
     return;
   }
   async function refreshMode() {
-    normal.hidden = true;
-    secure.hidden = true;
-    instructions.hidden = true;
+    const currentRequest = ++requestId;
     state.classList.remove('welcome-error');
-    state.textContent = 'Token-Einstellungen werden geladen…';
     try {
     const response = await fetch('/api/public/video-link', { cache: 'no-store' });
     if (!response.ok) throw new Error('Token-Einstellungen nicht erreichbar.');
     const settings = await response.json();
+    if (currentRequest !== requestId) return;
     if (settings.mode !== 'normal' && settings.mode !== 'https') {
       throw new Error('Token-Einstellung ungültig. Bitte den Admin verständigen.');
     }
     const https = settings.mode === 'https';
-    state.textContent = https ? 'Zertifikat-Modus · Einrichtung ausstehend' : 'Direkt-Modus · lokale Video-QRs';
-    normal.hidden = https;
-    secure.hidden = !https;
-    instructions.hidden = false;
+    const certificate = settings.certificate;
+    const expiry = Date.parse(certificate?.expires_at);
+    const ready = https && certificate?.ready === true && Number.isFinite(expiry) && expiry > Date.now();
+    state.textContent = https ? (ready ? 'Zertifikat-Modus · bereit zum Scannen' : 'Zertifikat-Modus · noch nicht bereit') : 'Direkt-Modus · lokale Video-QRs';
+    normal.hidden = https && !ready;
+    secure.hidden = !https || ready;
+    instructions.hidden = https && !ready;
+    document.getElementById('scan-ready-title').textContent = ready ? 'Zertifikat aktiv. Dein Video ist bereit.' : 'Dein QR-Code ist der direkte Weg.';
+    document.getElementById('scan-ready-message').textContent = ready
+      ? 'Bleibe im WLAN Video_GB. Öffne die normale Handy-Kamera und scanne den Cloud-QR auf deinem Video-Botschaft-Aufkleber.'
+      : 'Für Video-QRs mit http://192.168.4.1 brauchst du kein Zertifikat. Kamera öffnen, Aufkleber scannen und Video ansehen.';
     instruction.textContent = directInstruction;
     if (https) {
-      document.getElementById('certificate-message').textContent = settings.certificate?.message || 'Bitte den Admin wegen der Zertifikatseinrichtung verständigen.';
-      instruction.textContent = 'Öffne nach der WLAN-Anmeldung in Safari http://192.168.4.1. Die Zertifikatseinrichtung muss abgeschlossen sein, bevor Cloud-QRs direkt über die Kamera funktionieren.';
+      document.getElementById('certificate-message').textContent = certificate?.message || 'Bitte den Admin wegen der Zertifikatseinrichtung verständigen.';
+      document.getElementById('certificate-state').textContent = ready ? 'Zertifikat geprüft und aktiv' : certificate?.state === 'setup_required' ? 'Einrichtung noch ausstehend' : 'Kein gültiges, aktiviertes Zertifikat';
+      document.getElementById('certificate-validity').textContent = Number.isFinite(expiry) ? 'Gültig bis: ' + new Date(expiry).toLocaleString('de-DE') : 'Noch kein gültiges Zertifikat vorhanden.';
+      document.getElementById('scan-certificate-validity').textContent = ready ? 'Zertifikat gültig bis: ' + new Date(expiry).toLocaleString('de-DE') : '';
+    } else {
+      document.getElementById('scan-certificate-validity').textContent = '';
     }
   } catch (error) {
+    if (currentRequest !== requestId) return;
+    normal.hidden = true;
+    secure.hidden = true;
+    instructions.hidden = true;
     state.textContent = error.message + ' Bitte die Seite neu laden oder den Admin verständigen.';
     state.classList.add('welcome-error');
   }
@@ -52,4 +66,8 @@
     if (document.visibilityState === 'visible') refreshMode();
   });
   refreshMode();
+  // Observe verified Pi activation without changing the Admin's saved mode.
+  window.setInterval(() => {
+    if (document.visibilityState === 'visible') refreshMode();
+  }, 10000);
 })();

@@ -3,10 +3,11 @@ const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const vm = require('node:vm');
 
-async function welcome(mode, fail = false) {
+async function welcome(mode, fail = false, certificate = { state: 'setup_required', ready: false, message: 'Pending' }) {
   const nodes = new Map();
   const listeners = {};
   let savedMode = mode;
+  let savedCertificate = certificate;
   const document = {
     documentElement: { dataset: {} }, visibilityState: 'visible',
     getElementById(id) {
@@ -16,14 +17,14 @@ async function welcome(mode, fail = false) {
     addEventListener(name, fn) { listeners[name] = fn; },
   };
   vm.runInNewContext(readFileSync(__dirname + '/welcome.js', 'utf8'), {
-    document, window: { addEventListener(name, fn) { listeners[name] = fn; } },
+    document, window: { addEventListener(name, fn) { listeners[name] = fn; }, setInterval(fn) { listeners.poll = fn; } },
     fetch: async () => {
       if (fail) throw new Error('Offline');
-      return { ok: true, json: async () => ({ mode: savedMode, certificate: savedMode === 'https' ? { message: 'Pending' } : null }) };
+      return { ok: true, json: async () => ({ mode: savedMode, certificate: savedMode === 'https' ? savedCertificate : null }) };
     },
   });
   await new Promise(resolve => setImmediate(resolve));
-  return { nodes, async saved(mode) { savedMode = mode; await listeners.pageshow(); } };
+  return { nodes, async saved(mode) { savedMode = mode; await listeners.pageshow(); }, async activated(cert) { savedCertificate = cert; listeners.poll(); await new Promise(resolve => setImmediate(resolve)); } };
 }
 
 test('Direct mode shows only the direct workflow, without certificates', async () => {
@@ -37,6 +38,31 @@ test('Certificate mode shows only the certificate workflow', async () => {
   const { nodes } = await welcome('https');
   assert.equal(nodes.get('normal-mode').hidden, true);
   assert.equal(nodes.get('https-mode').hidden, false);
+  assert.equal(nodes.get('video-instructions').hidden, true);
+});
+
+test('Verified valid HTTPS activation automatically reveals camera scan without changing mode', async () => {
+  const view = await welcome('https');
+  await view.activated({ ready: true, expires_at: new Date(Date.now() + 86400000).toISOString() });
+  assert.equal(view.nodes.get('https-mode').hidden, true);
+  assert.equal(view.nodes.get('normal-mode').hidden, false);
+  assert.equal(view.nodes.get('video-instructions').hidden, false);
+});
+
+test('Expired certificates cannot reveal the HTTPS camera workflow', async () => {
+  const { nodes } = await welcome('https', false, { ready: true, expires_at: '2020-01-01T00:00:00Z' });
+  assert.equal(nodes.get('video-instructions').hidden, true);
+  assert.equal(nodes.get('https-mode').hidden, false);
+});
+
+test('An unverified certificate cannot reveal the HTTPS camera workflow', async () => {
+  const { nodes } = await welcome('https', false, { ready: false, expires_at: new Date(Date.now() + 86400000).toISOString() });
+  assert.equal(nodes.get('video-instructions').hidden, true);
+});
+
+test('Missing expiry cannot reveal the HTTPS camera workflow', async () => {
+  const { nodes } = await welcome('https', false, { ready: true });
+  assert.equal(nodes.get('video-instructions').hidden, true);
 });
 
 test('Returning to the page reads the saved Admin mode instead of retaining the old selection', async () => {
