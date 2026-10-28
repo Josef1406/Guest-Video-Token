@@ -74,7 +74,35 @@ def ensure_ap():
     run('systemctl', 'restart', 'dnsmasq', check=False, timeout=30)
     run('systemctl', 'reload-or-restart', 'nginx', check=False, timeout=30)
 
-HOSTAPD_CONF = Path('/etc/hostapd/hostapd.conf')
+AP_RESTORE_UNIT = 'video-token-ap-restore'
+UPLINK_BUDGET = 8 * 60  # seconds Video_GB may stay paused at most
+SWITCH_MODE = '/usr/local/sbin/switch-mode'
+
+def shared_radio():
+    """True without USB stick: the built-in chip must serve AP and uplink."""
+    return not Path('/sys/class/net/wlan1').exists()
+
+def guests_connected():
+    out = run('iw', 'dev', 'wlan0', 'station', 'dump', check=False, timeout=10)
+    return 'Station' in out
+
+def pause_ap():
+    """The built-in chip cannot keep Video_GB stable while it joins another
+    Wi-Fi on a different channel. Pause the AP for the renewal and arm a
+    systemd timer that restores it even if this process hangs or crashes."""
+    run('systemctl', 'stop', AP_RESTORE_UNIT + '.timer', check=False)
+    run('systemctl', 'reset-failed', AP_RESTORE_UNIT + '.timer', AP_RESTORE_UNIT + '.service', check=False)
+    run('systemd-run', '--unit', AP_RESTORE_UNIT, '--on-active=%d' % (UPLINK_BUDGET + 120),
+        SWITCH_MODE, 'ap', check=False)
+    run('systemctl', 'stop', 'dnsmasq', 'hostapd', check=False, timeout=30)
+
+def resume_ap():
+    run(SWITCH_MODE, 'ap', check=False, timeout=120)
+    if not _ap_alive():
+        time.sleep(3)
+        run(SWITCH_MODE, 'ap', check=False, timeout=120)
+    if _ap_alive():
+        run('systemctl', 'stop', AP_RESTORE_UNIT + '.timer', check=False)
 
 def _station_mac():
     """Virtual station needs its own (locally administered) MAC; reusing wlan0's
@@ -102,49 +130,6 @@ def bring_up(dev):
         raise ValueError('Zweite WLAN-Verbindung am Token konnte nicht gestartet werden (%s). '
                          'Token neu starten und erneut versuchen.' % ((error.stderr or '').strip() or dev))
 
-def parse_channels(scan_output):
-    """{ssid: 2.4-GHz channel} from `iw dev X scan` output."""
-    found, freq = {}, None
-    for line in scan_output.splitlines():
-        line = line.strip()
-        if line.startswith('BSS '): freq = None
-        elif line.startswith('freq:'):
-            try: freq = int(float(line.split(':', 1)[1]))
-            except ValueError: freq = None
-        elif line.startswith('SSID:') and freq and 2412 <= freq <= 2472:
-            found.setdefault(line.split(':', 1)[1].strip(), (freq - 2407) // 5)
-    return found
-
-def ap_channel():
-    try:
-        for line in HOSTAPD_CONF.read_text().splitlines():
-            if line.startswith('channel='): return int(line.split('=', 1)[1])
-    except (OSError, ValueError):
-        pass
-    return None
-
-def match_ap_channel(dev, ssid):
-    """The built-in chip can only use one channel: move Video_GB to the home
-    Wi-Fi's channel (guests reconnect automatically after a few seconds)."""
-    if dev != 'wlsta0':
-        return
-    channel = None
-    for _ in range(2):
-        channel = parse_channels(run('iw', 'dev', dev, 'scan', timeout=20, check=False)).get(ssid)
-        if channel: break
-        time.sleep(2)
-    if not channel:
-        raise ValueError('Heim-WLAN „%s“ nicht gefunden (Token braucht 2,4-GHz-WLAN in Reichweite).' % ssid)
-    if channel != ap_channel():
-        text = HOSTAPD_CONF.read_text()
-        lines = [('channel=%d' % channel) if l.startswith('channel=') else l for l in text.splitlines()]
-        HOSTAPD_CONF.write_text('\n'.join(lines) + '\n')
-        run('systemctl', 'restart', 'hostapd', check=False, timeout=30)
-        time.sleep(3)
-        if not Path('/sys/class/net/wlsta0').exists():
-            interface()
-        bring_up(dev)
-
 def scan():
     dev = interface()
     try:
@@ -167,15 +152,16 @@ def scan():
 def connect(cfg):
     # Clean up a previous attempt FIRST: disconnect() deletes wlsta0, so it must
     # run before interface() creates the virtual station again.
-    disconnect()
+    disconnect(restore=False)
     dev = interface()
     RUN_DIR.mkdir(parents=True, exist_ok=True)
     conf = RUN_DIR / 'home-wifi.conf'
     net = 'key_mgmt=NONE' if cfg['psk'] == '' else 'psk="%s"' % cfg['psk']
     conf.write_text('ctrl_interface=/run/video-token/wpa\ncountry=DE\nnetwork={\n ssid="%s"\n %s\n}\n' % (cfg['ssid'], net))
     os.chmod(conf, 0o600)
+    if Path('/usr/bin/nmcli').exists():
+        run('nmcli', 'device', 'set', dev, 'managed', 'no', check=False)
     bring_up(dev)
-    match_ap_channel(dev, cfg['ssid'])
     run('wpa_supplicant', '-B', '-i', dev, '-c', str(conf), '-P', str(RUN_DIR / 'wpa.pid'))
     for _ in range(30):
         status = run('wpa_cli', '-p', '/run/video-token/wpa', '-i', dev, 'status', check=False)
@@ -201,7 +187,7 @@ def connect(cfg):
         if 'yes' in run('timedatectl', 'show', '-p', 'NTPSynchronized', '--value', check=False): break
         time.sleep(2)
 
-def disconnect():
+def disconnect(restore=True):
     dev = 'wlan1' if Path('/sys/class/net/wlan1').exists() else 'wlsta0'
     pid = RUN_DIR / 'wpa.pid'
     if pid.exists():
@@ -211,7 +197,8 @@ def disconnect():
     run('dhcpcd', '-k', dev, check=False, timeout=10) if Path('/usr/sbin/dhcpcd').exists() else None
     if dev == 'wlsta0' and Path('/sys/class/net/wlsta0').exists():
         run('iw', 'dev', 'wlsta0', 'del', check=False)
-    ensure_ap()
+    if restore:
+        resume_ap() if shared_radio() else ensure_ap()
 
 def post(body):
     req = urllib.request.Request(BROKER_URL, data=json.dumps(body).encode(), method='POST',
@@ -223,13 +210,16 @@ def post(body):
         try: return json.loads(e.read())
         except ValueError: return {'error': 'Online-Aussteller antwortet nicht.'}
 
+PAUSE_MESSAGE = ('„Video_GB“ ist jetzt 2–5 Minuten weg, während der Token das Zertifikat erneuert. '
+                 'Danach wieder mit „Video_GB“ verbinden und diese Seite öffnen – hier steht dann das Ergebnis.')
+
 LABELS = {'creating': 'Auftrag wird angelegt', 'dns': 'Domain wird geprüft', 'validating': 'Domain wird bestätigt',
           'ready': 'Zertifikat wird ausgestellt', 'processing': 'Zertifikat wird ausgestellt', 'valid': 'Zertifikat wird abgeholt',
           'cleanup': 'Abschluss', 'complete': 'Fertig'}
 
-def issue(post_fn=post, activate=certificate_bridge.activate, sleep=time.sleep):
+def issue(post_fn=post, activate=certificate_bridge.activate, sleep=time.sleep, polls=48):
     request = certificate_bridge.renewal()
-    for i in range(120):
+    for i in range(polls):
         result = post_fn(request)
         if result.get('error') and result.get('state') not in LABELS:
             raise ValueError(result['error'])
@@ -263,8 +253,12 @@ def renew_now():
             _set('needs_wifi', 0, 'Bitte ein Heim-WLAN eintragen.'); return
         if video_link.load_mode() != 'https':
             _set('idle', 0, 'Zertifikat-Modus ist nicht eingestellt.'); return
-        _set('connecting', 15, 'Verbinde mit „%s“…' % cfg['ssid'])
         try:
+            if shared_radio():
+                _set('connecting', 10, PAUSE_MESSAGE)
+                time.sleep(6)  # let the phone receive this message before Video_GB pauses
+                pause_ap()
+            _set('connecting', 20, 'Verbinde mit „%s“…' % cfg['ssid'])
             connect(cfg)
             _set('issuing', 45, 'Internet verbunden. Zertifikat wird angefordert…')
             result = issue()
@@ -288,13 +282,13 @@ def start():
 def status():
     cfg = load()
     return {**STATE, 'configured': cfg is not None, 'ssid': cfg['ssid'] if cfg else None,
-            'busy': LOCK.locked(), 'radio': 'usb' if Path('/sys/class/net/wlan1').exists() else 'internal'}
+            'busy': LOCK.locked(), 'radio': 'internal' if shared_radio() else 'usb'}
 
 def background():
     def loop():
         time.sleep(90)
         while True:
-            if load() and needs_renewal():
+            if load() and needs_renewal() and not (shared_radio() and guests_connected()):
                 renew_now()
             time.sleep(CHECK_EVERY)
     threading.Thread(target=loop, daemon=True).start()
