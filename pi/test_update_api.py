@@ -106,7 +106,7 @@ class UpdateApiRules(unittest.TestCase):
         self.assertIn(os.path.join("web", "index.html"), listing)
         self.assertIn(os.path.join("pi", "admin-server.py"), listing)
         self.assertEqual(self.saved_versions, ["abc1234def5678"])
-        self.assertFalse(self.updates.exists())  # Staging wieder aufgeräumt
+        self.assertEqual(list(self.updates.glob("stage-*")), [])  # Staging aufgeräumt
 
     def test_rejects_tampered_payload(self):
         cookie = self.login()
