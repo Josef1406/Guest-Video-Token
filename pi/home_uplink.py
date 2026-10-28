@@ -141,6 +141,7 @@ def disconnect():
     run('dhcpcd', '-k', dev, check=False, timeout=10) if Path('/usr/sbin/dhcpcd').exists() else None
     if dev == 'wlsta0' and Path('/sys/class/net/wlsta0').exists():
         run('iw', 'dev', 'wlsta0', 'del', check=False)
+    ensure_ap()
 
 def post(body):
     req = urllib.request.Request(BROKER_URL, data=json.dumps(body).encode(), method='POST',
